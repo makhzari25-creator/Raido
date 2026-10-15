@@ -126,7 +126,7 @@
     await openDb(await res.arrayBuffer());
     build();
   }catch(e){
-    document.getElementById('load').textContent='خطا در بارگذاری نقشه: '+(e.message||e)+'\nنقشه باید در assets باشد.';
+    document.getElementById('load').textContent='خطا در بارگذاری نقشه: '+(e.message||e)+'\nفایل نقشه را دوباره آپلود کنید.';
     document.getElementById('badge').textContent='خطای نقشه';
   }
 })();

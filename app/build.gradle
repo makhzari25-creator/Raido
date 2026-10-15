@@ -9,8 +9,8 @@ android {
         applicationId "ir.tripanalyzer.app"
         minSdk 26
         targetSdk 34
-        versionCode 130
-        versionName "2.3.10"
+        versionCode 131
+        versionName "2.3.11"
     }
     // امضا از متغیرهای محیطی (GitHub Secrets) خوانده می‌شود؛ رمز در سورس نیست.
     // اگر تنظیم نشده باشد، با کلید debug امضا می‌شود تا بیلد همیشه کار کند.

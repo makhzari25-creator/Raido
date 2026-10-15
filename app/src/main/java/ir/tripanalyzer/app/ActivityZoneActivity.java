@@ -41,6 +41,8 @@ public final class ActivityZoneActivity extends BaseActivity {
 
     private static final int REQ_LOC = 4411;
     private static final int REQ_PICK_MAP = 4412;
+    // fetch() روی file:// در WebView کروم کار نمی‌کند (Failed to fetch)؛ فایل‌ها از یک origin مجازی https سرو می‌شوند.
+    private static final String VHOST = "raido-zone.local";
 
     private WebView web;
     private FrameLayout mapBox;
@@ -332,7 +334,7 @@ public final class ActivityZoneActivity extends BaseActivity {
                         FrameLayout.LayoutParams.MATCH_PARENT));
             }
             mapReady = false;
-            web.loadUrl("file://" + dir.getAbsolutePath() + "/index.html");
+            web.loadUrl("https://" + VHOST + "/index.html");
         } catch (Exception e) {
             Toast.makeText(this, "نمایش نقشه: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
@@ -353,6 +355,42 @@ public final class ActivityZoneActivity extends BaseActivity {
         w.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         w.addJavascriptInterface(new Bridge(), "RaidoZone");
         w.setWebViewClient(new WebViewClient() {
+            @Override
+            public android.webkit.WebResourceResponse shouldInterceptRequest(
+                    WebView view, android.webkit.WebResourceRequest req) {
+                Uri u = req.getUrl();
+                if (u == null || !VHOST.equals(u.getHost())) {
+                    // آفلاین: هر درخواست بیرونی مسدود
+                    return new android.webkit.WebResourceResponse("text/plain", "utf-8", 403, "Blocked",
+                            new java.util.HashMap<String, String>(), new java.io.ByteArrayInputStream(new byte[0]));
+                }
+                try {
+                    String name = u.getLastPathSegment();
+                    if (name == null || name.isEmpty()) name = "index.html";
+                    File dir = new File(getFilesDir(), "zone_map");
+                    File f = new File(dir, name);
+                    if (!f.getCanonicalPath().startsWith(dir.getCanonicalPath()) || !f.isFile()) {
+                        return new android.webkit.WebResourceResponse("text/plain", "utf-8", 404, "Not Found",
+                                new java.util.HashMap<String, String>(), new java.io.ByteArrayInputStream(new byte[0]));
+                    }
+                    String mime = "application/octet-stream";
+                    if (name.endsWith(".html")) mime = "text/html";
+                    else if (name.endsWith(".js")) mime = "application/javascript";
+                    else if (name.endsWith(".css")) mime = "text/css";
+                    else if (name.endsWith(".wasm")) mime = "application/wasm";
+                    java.util.HashMap<String, String> h = new java.util.HashMap<>();
+                    h.put("Access-Control-Allow-Origin", "*");
+                    android.webkit.WebResourceResponse r = new android.webkit.WebResourceResponse(
+                            mime, mime.startsWith("text/") || mime.endsWith("javascript") ? "utf-8" : null,
+                            new java.io.FileInputStream(f));
+                    r.setStatusCodeAndReasonPhrase(200, "OK");
+                    r.setResponseHeaders(h);
+                    return r;
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+
             @Override
             public void onPageFinished(WebView view, String url) {
                 mapReady = true;
