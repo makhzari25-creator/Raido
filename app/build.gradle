@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+android {
+    namespace 'ir.tripanalyzer.app'
+    compileSdk 34
+    defaultConfig {
+        applicationId "ir.tripanalyzer.app"
+        minSdk 26
+        targetSdk 34
+        versionCode 130
+        versionName "2.3.10"
+    }
+    // امضا از متغیرهای محیطی (GitHub Secrets) خوانده می‌شود؛ رمز در سورس نیست.
+    // اگر تنظیم نشده باشد، با کلید debug امضا می‌شود تا بیلد همیشه کار کند.
+    def ksPath = System.getenv("RAIDO_KEYSTORE_PATH")
+    def hasReleaseKey = ksPath != null && file(ksPath).exists()
+    signingConfigs {
+        if (hasReleaseKey) {
+            release {
+                storeFile file(ksPath)
+                storePassword System.getenv("RAIDO_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("RAIDO_KEY_ALIAS") ?: "raido"
+                keyPassword System.getenv("RAIDO_KEY_PASSWORD") ?: System.getenv("RAIDO_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseKey) signingConfig signingConfigs.release
+            else signingConfig signingConfigs.debug
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+    buildFeatures { buildConfig true }
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.0.21'
+}

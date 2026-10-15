@@ -1,0 +1,1003 @@
+{
+  "province": "مازندران",
+  "province_en": "Mazandaran",
+  "version": "2.0",
+  "updated": "2026-10-13",
+  "source_note": "۶۳ شهر فهرست ویکی‌پدیا. میدان‌ها فقط در صورت وجود نام مستند. مختصات از نقشه‌های عمومی (ویکی/GeoNames/نشان/Wikimapia).",
+  "cities": [
+    {
+      "name": "ساری",
+      "name_en": "Sari",
+      "center": {
+        "lat": 36.5633,
+        "lng": 53.0601
+      },
+      "landmarks": [
+        {
+          "name": "میدان ساعت",
+          "lat": 36.5659,
+          "lng": 53.0583,
+          "note": "برج ساعت — مرکز"
+        },
+        {
+          "name": "میدان امام",
+          "lat": 36.5635,
+          "lng": 53.0588
+        },
+        {
+          "name": "میدان شهدا",
+          "lat": 36.5685,
+          "lng": 53.055
+        },
+        {
+          "name": "میدان خزر",
+          "lat": 36.575,
+          "lng": 53.072
+        },
+        {
+          "name": "میدان معلم",
+          "lat": 36.56,
+          "lng": 53.05
+        }
+      ]
+    },
+    {
+      "name": "بابل",
+      "name_en": "Babol",
+      "center": {
+        "lat": 36.5513,
+        "lng": 52.6786
+      },
+      "landmarks": [
+        {
+          "name": "میدان کشوری",
+          "lat": 36.544,
+          "lng": 52.685,
+          "note": "ورودی شرقی"
+        },
+        {
+          "name": "میدان امام",
+          "lat": 36.5515,
+          "lng": 52.678
+        },
+        {
+          "name": "میدان قاضی‌کتی",
+          "lat": 36.548,
+          "lng": 52.67
+        },
+        {
+          "name": "میدان ۱۷ شهریور",
+          "lat": 36.555,
+          "lng": 52.682
+        },
+        {
+          "name": "فلکه مرکزی (برج ساعت)",
+          "lat": 36.551,
+          "lng": 52.6795
+        }
+      ]
+    },
+    {
+      "name": "آمل",
+      "name_en": "Amol",
+      "center": {
+        "lat": 36.4697,
+        "lng": 52.3507
+      },
+      "landmarks": [
+        {
+          "name": "میدان قائم",
+          "lat": 36.4543,
+          "lng": 52.3485
+        },
+        {
+          "name": "میدان ۱۷ شهریور",
+          "lat": 36.4705,
+          "lng": 52.352
+        },
+        {
+          "name": "میدان هزارسنگر",
+          "lat": 36.4664,
+          "lng": 52.3933
+        },
+        {
+          "name": "میدان امام",
+          "lat": 36.469,
+          "lng": 52.351
+        },
+        {
+          "name": "سبزه‌میدان",
+          "lat": 36.4715,
+          "lng": 52.348
+        }
+      ]
+    },
+    {
+      "name": "قائم‌شهر",
+      "name_en": "Qaemshahr",
+      "center": {
+        "lat": 36.4631,
+        "lng": 52.86
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام خمینی",
+          "lat": 36.4635,
+          "lng": 52.857
+        },
+        {
+          "name": "میدان جانبازان",
+          "lat": 36.461,
+          "lng": 52.862
+        },
+        {
+          "name": "میدان شهرداری",
+          "lat": 36.464,
+          "lng": 52.8585
+        },
+        {
+          "name": "میدان طالقانی",
+          "lat": 36.466,
+          "lng": 52.855
+        },
+        {
+          "name": "میدان آزادی",
+          "lat": 36.46,
+          "lng": 52.865
+        }
+      ]
+    },
+    {
+      "name": "بهشهر",
+      "name_en": "Behshahr",
+      "center": {
+        "lat": 36.6923,
+        "lng": 53.5526
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.692,
+          "lng": 53.552
+        },
+        {
+          "name": "میدان شهدا",
+          "lat": 36.694,
+          "lng": 53.555
+        },
+        {
+          "name": "میدان شهرداری",
+          "lat": 36.691,
+          "lng": 53.55
+        }
+      ],
+      "landmarks_note": "فقط میدان‌های اصلی مستند؛ بقیه نام‌گذاری عمومی تأیید نشد"
+    },
+    {
+      "name": "چالوس",
+      "name_en": "Chalus",
+      "center": {
+        "lat": 36.655,
+        "lng": 51.42
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.6545,
+          "lng": 51.4205
+        },
+        {
+          "name": "میدان معلم",
+          "lat": 36.656,
+          "lng": 51.418
+        },
+        {
+          "name": "میدان دریا",
+          "lat": 36.66,
+          "lng": 51.422
+        }
+      ]
+    },
+    {
+      "name": "نکا",
+      "name_en": "Neka",
+      "center": {
+        "lat": 36.6508,
+        "lng": 53.299
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.6505,
+          "lng": 53.2985
+        },
+        {
+          "name": "میدان انقلاب",
+          "lat": 36.652,
+          "lng": 53.301
+        },
+        {
+          "name": "میدان شهرداری",
+          "lat": 36.649,
+          "lng": 53.297
+        }
+      ]
+    },
+    {
+      "name": "بابلسر",
+      "name_en": "Babolsar",
+      "center": {
+        "lat": 36.7025,
+        "lng": 52.6576
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.7015,
+          "lng": 52.6505
+        },
+        {
+          "name": "میدان بهشتی",
+          "lat": 36.705,
+          "lng": 52.665
+        },
+        {
+          "name": "میدان دریا",
+          "lat": 36.708,
+          "lng": 52.652
+        },
+        {
+          "name": "میدان دانشگاه",
+          "lat": 36.699,
+          "lng": 52.645
+        },
+        {
+          "name": "میدان آزادی",
+          "lat": 36.698,
+          "lng": 52.66
+        }
+      ]
+    },
+    {
+      "name": "تنکابن",
+      "name_en": "Tonekabon",
+      "center": {
+        "lat": 36.8163,
+        "lng": 50.8737
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.816,
+          "lng": 50.874
+        },
+        {
+          "name": "میدان شهدا",
+          "lat": 36.818,
+          "lng": 50.876
+        },
+        {
+          "name": "میدان دریا",
+          "lat": 36.82,
+          "lng": 50.87
+        }
+      ]
+    },
+    {
+      "name": "نوشهر",
+      "name_en": "Nowshahr",
+      "center": {
+        "lat": 36.6485,
+        "lng": 51.496
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.648,
+          "lng": 51.4965
+        },
+        {
+          "name": "میدان دریا",
+          "lat": 36.652,
+          "lng": 51.5
+        },
+        {
+          "name": "میدان شهرداری",
+          "lat": 36.647,
+          "lng": 51.494
+        }
+      ]
+    },
+    {
+      "name": "فریدونکنار",
+      "name_en": "Fereydunkenar",
+      "center": {
+        "lat": 36.6864,
+        "lng": 52.5225
+      },
+      "landmarks": [
+        {
+          "name": "میدان درنا",
+          "lat": 36.6867,
+          "lng": 52.5328
+        },
+        {
+          "name": "میدان امام",
+          "lat": 36.6855,
+          "lng": 52.521
+        },
+        {
+          "name": "میدان بندر",
+          "lat": 36.69,
+          "lng": 52.528
+        }
+      ]
+    },
+    {
+      "name": "رامسر",
+      "name_en": "Ramsar",
+      "center": {
+        "lat": 36.9031,
+        "lng": 50.6583
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.903,
+          "lng": 50.658
+        },
+        {
+          "name": "میدان هتل قدیم",
+          "lat": 36.905,
+          "lng": 50.662
+        },
+        {
+          "name": "میدان دریا",
+          "lat": 36.907,
+          "lng": 50.655
+        }
+      ]
+    },
+    {
+      "name": "جویبار",
+      "name_en": "Juybar",
+      "center": {
+        "lat": 36.6411,
+        "lng": 52.9122
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.641,
+          "lng": 52.912
+        },
+        {
+          "name": "میدان شهرداری",
+          "lat": 36.64,
+          "lng": 52.91
+        }
+      ]
+    },
+    {
+      "name": "محمودآباد",
+      "name_en": "Mahmudabad",
+      "center": {
+        "lat": 36.6319,
+        "lng": 52.2625
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.6315,
+          "lng": 52.262
+        },
+        {
+          "name": "میدان دریا",
+          "lat": 36.635,
+          "lng": 52.265
+        },
+        {
+          "name": "میدان شهرداری",
+          "lat": 36.63,
+          "lng": 52.26
+        }
+      ]
+    },
+    {
+      "name": "امیرکلا",
+      "name_en": "Amirkola",
+      "center": {
+        "lat": 36.5986,
+        "lng": 52.6636
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.5985,
+          "lng": 52.6635
+        },
+        {
+          "name": "میدان شهرداری",
+          "lat": 36.5975,
+          "lng": 52.662
+        }
+      ]
+    },
+    {
+      "name": "نور",
+      "name_en": "Nur",
+      "center": {
+        "lat": 36.5731,
+        "lng": 52.015
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.573,
+          "lng": 52.015
+        },
+        {
+          "name": "میدان دریا",
+          "lat": 36.576,
+          "lng": 52.018
+        },
+        {
+          "name": "میدان شهرداری",
+          "lat": 36.571,
+          "lng": 52.013
+        },
+        {
+          "name": "میدان رویان",
+          "lat": 36.568,
+          "lng": 51.97
+        }
+      ]
+    },
+    {
+      "name": "گلوگاه",
+      "name_en": "Galugah",
+      "center": {
+        "lat": 36.7223,
+        "lng": 53.7892
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.7223,
+          "lng": 53.7892
+        }
+      ],
+      "landmarks_note": "نام میدان‌های متعدد عمومی تأیید نشد؛ فقط مرکز/امام"
+    },
+    {
+      "name": "کتالم و سادات‌شهر",
+      "name_en": "Ketalem va Sadat Shahr",
+      "center": {
+        "lat": 36.8766,
+        "lng": 50.7074
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند با مختصات جداگانه پیدا نشد؛ فقط مرکز شهر"
+    },
+    {
+      "name": "زیرآب",
+      "name_en": "Zirab",
+      "center": {
+        "lat": 36.1653,
+        "lng": 52.9761
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.1653,
+          "lng": 52.9761
+        }
+      ],
+      "landmarks_note": "فقط میدان امام/مرکز مستند"
+    },
+    {
+      "name": "عباس‌آباد",
+      "name_en": "Abbasabad",
+      "center": {
+        "lat": 36.7246,
+        "lng": 51.0791
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.7246,
+          "lng": 51.0791
+        }
+      ]
+    },
+    {
+      "name": "خلیل‌شهر",
+      "name_en": "Khalil Shahr",
+      "center": {
+        "lat": 36.6989,
+        "lng": 53.6232
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "رستمکلا",
+      "name_en": "Rostamkola",
+      "center": {
+        "lat": 36.6801,
+        "lng": 53.3982
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "خرم‌آباد",
+      "name_en": "Khorramabad",
+      "center": {
+        "lat": 36.7842,
+        "lng": 50.8615
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.7842,
+          "lng": 50.8615
+        }
+      ],
+      "landmarks_note": "مرکز تنکابن غربی؛ میدان جدا مستند محدود"
+    },
+    {
+      "name": "شیرود",
+      "name_en": "Shiroud",
+      "center": {
+        "lat": 36.8509,
+        "lng": 50.7989
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "چمستان",
+      "name_en": "Chamestan",
+      "center": {
+        "lat": 36.4786,
+        "lng": 52.109
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.4786,
+          "lng": 52.109
+        }
+      ]
+    },
+    {
+      "name": "کلاردشت",
+      "name_en": "Kelardasht",
+      "center": {
+        "lat": 36.4931,
+        "lng": 51.119
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.4931,
+          "lng": 51.119
+        }
+      ],
+      "landmarks_note": "شهر ییلاقی؛ میدان‌های متعدد عمومی در منابع باز ثبت نشده"
+    },
+    {
+      "name": "هچیرود",
+      "name_en": "Hachirud",
+      "center": {
+        "lat": 36.6867,
+        "lng": 51.336
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "ارطه",
+      "name_en": "Arateh",
+      "center": {
+        "lat": 36.4949,
+        "lng": 52.9262
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "سلمان‌شهر",
+      "name_en": "Salman Shahr",
+      "center": {
+        "lat": 36.7007,
+        "lng": 51.182
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.7007,
+          "lng": 51.182
+        }
+      ]
+    },
+    {
+      "name": "سورک",
+      "name_en": "Surak",
+      "center": {
+        "lat": 36.5969,
+        "lng": 53.2017
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.5969,
+          "lng": 53.2017
+        }
+      ]
+    },
+    {
+      "name": "شیرگاه",
+      "name_en": "Shirgah",
+      "center": {
+        "lat": 36.3017,
+        "lng": 52.8819
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام خمینی",
+          "lat": 36.3017,
+          "lng": 52.8819,
+          "note": "نزدیک پل شیرگاه / مرکز"
+        }
+      ],
+      "landmarks_note": "میدان امام خمینی در منابع نشان ذکر شده؛ مختصات تقریبی مرکز"
+    },
+    {
+      "name": "پل سفید",
+      "name_en": "Pol-e Sefid",
+      "center": {
+        "lat": 36.1161,
+        "lng": 53.0572
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.1161,
+          "lng": 53.0572
+        }
+      ]
+    },
+    {
+      "name": "کیاکلا",
+      "name_en": "Kiakola",
+      "center": {
+        "lat": 36.5834,
+        "lng": 52.799
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.5834,
+          "lng": 52.799
+        }
+      ]
+    },
+    {
+      "name": "بهنمیر",
+      "name_en": "Bahnemir",
+      "center": {
+        "lat": 36.6719,
+        "lng": 52.7433
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "هادی‌شهر",
+      "name_en": "Hadi Shahr",
+      "center": {
+        "lat": 36.642,
+        "lng": 52.6105
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "رویان",
+      "name_en": "Royan",
+      "center": {
+        "lat": 36.5674,
+        "lng": 51.954
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.5674,
+          "lng": 51.954
+        }
+      ]
+    },
+    {
+      "name": "ایزدشهر",
+      "name_en": "Izadshahr",
+      "center": {
+        "lat": 36.5944,
+        "lng": 52.1199
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "گتاب",
+      "name_en": "Gatab",
+      "center": {
+        "lat": 36.4299,
+        "lng": 52.6479
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "گلوگاه بابل",
+      "name_en": "Galugah (Babol)",
+      "center": {
+        "lat": 36.3109,
+        "lng": 52.6189
+      },
+      "landmarks": [],
+      "landmarks_note": "متفاوت از گلوگاه بهشهر؛ نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "سرخرود",
+      "name_en": "Sorkhrud",
+      "center": {
+        "lat": 36.6692,
+        "lng": 52.4425
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.6692,
+          "lng": 52.4425
+        }
+      ]
+    },
+    {
+      "name": "مرزن‌آباد",
+      "name_en": "Marzanabad",
+      "center": {
+        "lat": 36.4528,
+        "lng": 51.2851
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "نشتارود",
+      "name_en": "Nashtarud",
+      "center": {
+        "lat": 36.7478,
+        "lng": 51.0104
+      },
+      "landmarks": [
+        {
+          "name": "میدان امام",
+          "lat": 36.7478,
+          "lng": 51.0104
+        }
+      ]
+    },
+    {
+      "name": "کلارآباد",
+      "name_en": "Kelarabad",
+      "center": {
+        "lat": 36.6874,
+        "lng": 51.2306
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "آستانه‌سرا",
+      "name_en": "Astaneh Sara",
+      "center": {
+        "lat": 36.6415,
+        "lng": 52.4995
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "امامزاده عبدالله",
+      "name_en": "Emamzadeh Abdollah",
+      "center": {
+        "lat": 36.3951,
+        "lng": 52.2847
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "خوش‌رودپی",
+      "name_en": "Khush Rudpey",
+      "center": {
+        "lat": 36.372,
+        "lng": 52.5575
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "بابکان",
+      "name_en": "Babakan",
+      "center": {
+        "lat": 36.4523,
+        "lng": 52.4444
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "زرگر",
+      "name_en": "Zargar",
+      "center": {
+        "lat": 36.518,
+        "lng": 52.5666
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "کیاسر",
+      "name_en": "Kiasar",
+      "center": {
+        "lat": 36.2402,
+        "lng": 53.5325
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "پول",
+      "name_en": "Pul",
+      "center": {
+        "lat": 36.398,
+        "lng": 51.5794
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "کجور",
+      "name_en": "Kojur",
+      "center": {
+        "lat": 36.3823,
+        "lng": 51.724
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "کوهی‌خیل",
+      "name_en": "Kuhi Kheyl",
+      "center": {
+        "lat": 36.6888,
+        "lng": 52.8985
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "فرح‌آباد",
+      "name_en": "Farahabad",
+      "center": {
+        "lat": 36.59,
+        "lng": 53.0612
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "طبقده",
+      "name_en": "Tabaqdeh",
+      "center": {
+        "lat": 36.7631,
+        "lng": 53.1992
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "دابودشت",
+      "name_en": "Dabudasht",
+      "center": {
+        "lat": 36.4766,
+        "lng": 52.4386
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "آکند",
+      "name_en": "Akand",
+      "center": {
+        "lat": 36.696,
+        "lng": 53.0705
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "آلاشت",
+      "name_en": "Alasht",
+      "center": {
+        "lat": 36.0655,
+        "lng": 52.8325
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "رینه",
+      "name_en": "Rineh",
+      "center": {
+        "lat": 35.8815,
+        "lng": 52.1601
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "بلده",
+      "name_en": "Baladeh",
+      "center": {
+        "lat": 36.1989,
+        "lng": 51.7977
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "پایین‌هولار",
+      "name_en": "Pain Hular",
+      "center": {
+        "lat": 36.4289,
+        "lng": 53.1311
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "مرزیکلا",
+      "name_en": "Marzikola",
+      "center": {
+        "lat": 36.36,
+        "lng": 52.73
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "فریم",
+      "name_en": "Farim",
+      "center": {
+        "lat": 36.1725,
+        "lng": 53.2675
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    },
+    {
+      "name": "گزنک",
+      "name_en": "Gazanak",
+      "center": {
+        "lat": 35.9031,
+        "lng": 52.2181
+      },
+      "landmarks": [],
+      "landmarks_note": "نام میدان مستند پیدا نشد"
+    }
+  ]
+}

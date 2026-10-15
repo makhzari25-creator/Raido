@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+
+    <application
+        android:name=".App"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".OnboardingActivity" android:exported="false"/>
+        <activity android:name=".SetupWizardActivity" android:exported="false"/>
+        <activity android:name=".PermissionsOnboardingActivity" android:exported="false"/>
+        <activity android:name=".SettingsActivity" android:exported="false"/>
+        <activity android:name=".ActivityZoneActivity" android:exported="false"/>
+        <activity android:name=".DetailsActivity" android:exported="false"/>
+        <activity android:name=".TripEditActivity" android:exported="false"/>
+        <activity android:name=".TextTestActivity" android:exported="false"/>
+        <activity android:name=".PrivacyActivity" android:exported="false"/>
+        <activity android:name=".ActivationActivity" android:exported="false"/>
+        <activity android:name=".SubscriptionActivity" android:exported="false"/>
+        <activity
+            android:name=".PromptActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:launchMode="singleTop"/>
+        <activity
+            android:name=".VerdictOverlayActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"/>
+        <activity android:name=".ReportsActivity" android:exported="false"/>
+        <activity android:name=".WeeklyStatsActivity" android:exported="false"/>
+        <activity android:name=".SupportActivity" android:exported="false"/>
+        <activity android:name=".HelpActivity" android:exported="false"/>
+        <activity android:name=".VehicleSettingsActivity" android:exported="false"/>
+
+        <service
+            android:name=".SnappScreenWatcherService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config"/>
+        </service>
+
+        <service
+            android:name=".SnappNotificationListenerService"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService"/>
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".PromptActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="ir.tripanalyzer.app.REDUCE_YES"/>
+                <action android:name="ir.tripanalyzer.app.REDUCE_NO"/>
+                <action android:name="ir.tripanalyzer.app.CONFIRM_YES"/>
+                <action android:name="ir.tripanalyzer.app.CONFIRM_NO"/>
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

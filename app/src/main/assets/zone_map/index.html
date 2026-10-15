@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>محدوده رایدو</title>
+<link href="maplibre-gl.css" rel="stylesheet"/>
+<script src="maplibre-gl.js"></script>
+<script src="sql-wasm.js"></script>
+<style>
+  html,body{margin:0;height:100%;font-family:Tahoma,sans-serif;background:#0B1220;color:#0F172A}
+  #map{position:absolute;inset:0}
+  .badge{position:absolute;top:10px;right:10px;z-index:2;background:rgba(15,23,42,.85);color:#fff;font-size:11px;padding:6px 10px;border-radius:999px}
+  .fab{position:absolute;left:12px;z-index:2;width:44px;height:44px;border:0;border-radius:14px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.2);font-size:20px}
+  #zIn{bottom:120px} #zOut{bottom:68px}
+  .load{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;background:rgba(11,18,32,.75);color:#fff;font-size:14px;text-align:center;padding:24px}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="badge" id="badge">بارگذاری نقشه…</div>
+<button class="fab" id="zIn" type="button">+</button>
+<button class="fab" id="zOut" type="button">−</button>
+<div class="load" id="load">در حال آماده‌سازی نقشه آفلاین مازندران…</div>
+<script>
+(async function(){
+  let center={lng:52.678,lat:36.551}, radiusKm=5, map=null, db=null;
+
+  function ring(lng,lat,km,n){
+    const R=6371,c=[];
+    for(let i=0;i<=n;i++){
+      const b=2*Math.PI*i/n;
+      const lat2=Math.asin(Math.sin(lat*Math.PI/180)*Math.cos(km/R)+Math.cos(lat*Math.PI/180)*Math.sin(km/R)*Math.cos(b));
+      const lng2=lng*Math.PI/180+Math.atan2(Math.sin(b)*Math.sin(km/R)*Math.cos(lat*Math.PI/180),Math.cos(km/R)-Math.sin(lat*Math.PI/180)*Math.sin(lat2));
+      c.push([lng2*180/Math.PI,lat2*180/Math.PI]);
+    }
+    return c;
+  }
+  function updateCircle(){
+    if(!map||!map.getSource('zone'))return;
+    map.getSource('zone').setData({type:'Feature',geometry:{type:'Polygon',coordinates:[ring(center.lng,center.lat,radiusKm,64)]},properties:{}});
+    map.getSource('pin').setData({type:'Feature',geometry:{type:'Point',coordinates:[center.lng,center.lat]},properties:{}});
+    if(window.RaidoZone&&RaidoZone.onCenterChanged){
+      RaidoZone.onCenterChanged(center.lat, center.lng, radiusKm);
+    }
+  }
+  async function inflateGzip(u8){
+    if(typeof DecompressionStream==='undefined')return u8;
+    if(!(u8[0]===0x1f&&u8[1]===0x8b))return u8;
+    const ds=new DecompressionStream('gzip');
+    const buf=await new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer();
+    return new Uint8Array(buf);
+  }
+  function tmsY(z,y){return (1<<z)-1-y;}
+
+  async function openDb(buf){
+    const SQL=await initSqlJs({locateFile:f=>'sql-wasm.wasm'});
+    db=new SQL.Database(new Uint8Array(buf));
+  }
+  function register(){
+    maplibregl.addProtocol('raido', async (params)=>{
+      try{
+        const p=params.url.replace('raido://m/','').replace('.pbf','').split('/');
+        const z=+p[0],x=+p[1],y=+p[2], row=tmsY(z,y);
+        const st=db.prepare('SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?');
+        st.bind([z,x,row]);
+        let data=null;
+        if(st.step()){ const o=st.getAsObject(); data=o.tile_data; }
+        st.free();
+        if(!data) return {data:new ArrayBuffer(0)};
+        let u8=data instanceof Uint8Array?data:new Uint8Array(data);
+        u8=await inflateGzip(u8);
+        return {data:u8.buffer.slice(u8.byteOffset,u8.byteOffset+u8.byteLength)};
+      }catch(e){ return {data:new ArrayBuffer(0)}; }
+    });
+  }
+  function build(){
+    register();
+    map=new maplibregl.Map({
+      container:'map',
+      style:{
+        version:8,
+        glyphs:'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+        sources:{m:{type:'vector',tiles:['raido://m/{z}/{x}/{y}.pbf'],minzoom:6,maxzoom:14,bounds:[50.3,35.7,54.2,37.05]}},
+        layers:[
+          {id:'bg',type:'background',paint:{'background-color':'#E8EEF4'}},
+          {id:'water',type:'line',source:'m','source-layer':'water',paint:{'line-color':'#7EB6D9','line-width':1.3}},
+          {id:'wf',type:'fill',source:'m','source-layer':'water',filter:['==','$type','Polygon'],paint:{'fill-color':'#A8D4EC','fill-opacity':0.7}},
+          {id:'rs',type:'line',source:'m','source-layer':'roads',filter:['in',['get','highway'],['literal',['secondary','tertiary','secondary_link','tertiary_link']]],paint:{'line-color':'#E8C547','line-width':['interpolate',['linear'],['zoom'],8,1,14,3]}},
+          {id:'rp',type:'line',source:'m','source-layer':'roads',filter:['in',['get','highway'],['literal',['primary','trunk','motorway','primary_link','trunk_link','motorway_link']]],paint:{'line-color':'#E89B4A','line-width':['interpolate',['linear'],['zoom'],6,1.2,14,4.5]}},
+          {id:'rm',type:'line',source:'m','source-layer':'roads',minzoom:12,filter:['in',['get','highway'],['literal',['residential','service','unclassified','living_street']]],paint:{'line-color':'#fff','line-width':1.4}},
+          {id:'pl',type:'symbol',source:'m','source-layer':'places',layout:{'text-field':['get','name'],'text-size':['match',['get','place'],'city',15,'town',13,'village',11,10],'text-font':['Open Sans Regular','Arial Unicode MS Regular'],'text-max-width':8},paint:{'text-color':'#0F172A','text-halo-color':'#fff','text-halo-width':1.2}}
+        ]
+      },
+      center:[center.lng,center.lat], zoom:11, minZoom:6, maxZoom:14,
+      maxBounds:[[50.15,35.55],[54.35,37.20]]
+    });
+    map.on('load',()=>{
+      map.addSource('zone',{type:'geojson',data:{type:'Feature',geometry:{type:'Polygon',coordinates:[]},properties:{}}});
+      map.addLayer({id:'zf',type:'fill',source:'zone',paint:{'fill-color':'#0F766E','fill-opacity':0.28}});
+      map.addLayer({id:'zl',type:'line',source:'zone',paint:{'line-color':'#0B3D3A','line-width':2.5}});
+      map.addSource('pin',{type:'geojson',data:{type:'Feature',geometry:{type:'Point',coordinates:[center.lng,center.lat]},properties:{}}});
+      map.addLayer({id:'pc',type:'circle',source:'pin',paint:{'circle-radius':8,'circle-color':'#0F766E','circle-stroke-width':3,'circle-stroke-color':'#fff'}});
+      updateCircle();
+      document.getElementById('load').style.display='none';
+      document.getElementById('badge').textContent='نقشه آفلاین مازندران · بکشید و زوم کنید';
+    });
+    map.on('click',e=>{ center={lng:e.lngLat.lng,lat:e.lngLat.lat}; updateCircle(); });
+    document.getElementById('zIn').onclick=()=>map.zoomIn();
+    document.getElementById('zOut').onclick=()=>map.zoomOut();
+  }
+
+  window.RaidoMapApi={
+    setCenter:function(lat,lng,r){
+      center={lat:+lat,lng:+lng}; if(r) radiusKm=+r;
+      if(map){ map.easeTo({center:[center.lng,center.lat],zoom:Math.max(map.getZoom(),11)}); updateCircle(); }
+    },
+    setRadius:function(r){ radiusKm=+r; updateCircle(); },
+    getCenter:function(){ return JSON.stringify({lat:center.lat,lng:center.lng,radiusKm:radiusKm}); }
+  };
+
+  try{
+    // Prefer Android-injected path via fetch relative to this html
+    let res=await fetch('map.mbtiles');
+    if(!res.ok) throw new Error('mbtiles '+res.status);
+    await openDb(await res.arrayBuffer());
+    build();
+  }catch(e){
+    document.getElementById('load').textContent='خطا در بارگذاری نقشه: '+(e.message||e)+'\nنقشه باید در assets باشد.';
+    document.getElementById('badge').textContent='خطای نقشه';
+  }
+})();
+</script>
+</body>
+</html>

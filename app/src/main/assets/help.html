@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>راهنمای رایدو</title>
+<style>
+@font-face{font-family:Vazir;src:url('fonts/Vazirmatn-Regular.ttf');font-weight:400}
+@font-face{font-family:Vazir;src:url('fonts/Vazirmatn-Bold.ttf');font-weight:700}
+body{font-family:Vazir,Tahoma,Arial,sans-serif;line-height:1.85;padding:18px;color:#1e293b;background:#f8fafc;margin:0;font-size:17px}
+h1{color:#0d5c4d;font-size:26px;font-weight:700}
+h2{color:#0d5c4d;font-size:20px;margin-top:28px;border-bottom:2px solid #0d5c4d;padding-bottom:6px;font-weight:700}
+h3{font-size:18px;margin-top:18px}
+.card{background:#fff;border-radius:14px;padding:16px;margin:14px 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.step{background:#e8f5f1;border-right:4px solid #0d5c4d;padding:12px 14px;margin:10px 0;border-radius:10px;font-size:16px}
+.ok{color:#0a0}.warn{color:#b45309}.bad{color:#c00}
+ul{padding-right:22px;font-size:16px}
+code,b.en{font-family:Arial,sans-serif;background:#eee;padding:2px 6px;border-radius:4px;font-size:15px}
+.footer{margin-top:32px;font-size:14px;color:#64748b;text-align:center}
+.enpath{font-family:Arial,sans-serif;font-weight:700;font-size:15px;letter-spacing:.2px}
+</style>
+</head>
+<body>
+<h1>راهنمای کامل رایدو</h1>
+<p>رایدو به رانندگان اسنپ کمک می‌کند بفهمند هر درخواست <b>به‌صرفه</b> است یا نه — قبل از قبول سفر. کارت تحلیل رنگی روی صفحه می‌آید.</p>
+
+<div class="card">
+<h2>۱) نصب و ورود</h2>
+<div class="step">اپ را نصب و باز کنید.</div>
+<div class="step">کد فعال‌سازی را از پشتیبانی تلگرام بگیرید و وارد کنید.</div>
+<div class="step"><b>برند خودرو</b>، <b>کارکرد</b>، <b>مصرف سوخت</b> و قیمت بنزین را تنظیم کنید.</div>
+<div class="step">کف تحلیلی و هدف درآمد ساعتی را مشخص کنید.</div>
+<div class="step">مدت نمایش کارت تحلیل را بین ۳ تا ۱۵ ثانیه بگذارید (پیش‌فرض ۶).</div>
+</div>
+
+<div class="card">
+<h2>۲) دسترسی‌ها</h2>
+<p>فقط <b>یک مورد اجباری</b> است. بقیه چند ثانیه‌ای هستند:</p>
+<div class="step"><b>۱. اگر کلید دسترس‌پذیری خاکستری بود</b> (اندروید ۱۳+ و نصب از بیرون استور)<br/><span class="enpath">App info &gt; ⋮ &gt; Allow restricted settings</span><br/>اگر ⋮ را ندیدید، یک‌بار کلید رایدو را در دسترس‌پذیری بزنید تا پیام «Restricted setting» بیاید، برگردید و دوباره ⋮ را بزنید.</div>
+<div class="step"><b>۲. دسترس‌پذیری (اجباری)</b><br/><span class="enpath">Settings &gt; Accessibility &gt; Installed apps &gt; RAIDO</span></div>
+<div class="step"><b>۳. بدون محدودیت باتری</b> — فقط یک پنجره‌ی تأیید</div>
+<div class="step"><b>اختیاری:</b> دسترسی اعلان‌ها (Notification access)، اعلان‌های خود رایدو، و موقعیت (GPS) برای مسافت دقیق‌تر</div>
+<p class="warn">سامسونگ / اندروید ۱۳+: گزینه Manage app if unused را خاموش کنید. شیائومی: محدودیت باتری پس‌زمینه را بردارید. دسترسی «نمایش روی سایر برنامه‌ها» دیگر لازم نیست.</p>
+</div>
+
+<div class="card">
+<h2>۳) صفحه اصلی</h2>
+<ul>
+<li>وضعیت دسترسی‌ها</li>
+<li>راهنمای «مشاهده جزئیات» حدود ۲ دقیقه باز است؛ بعد جمع می‌شود — با ⚠ دوباره باز می‌شود</li>
+<li>مسافت GPS و صفر کردن</li>
+<li>کلید تحلیل خودکار</li>
+<li>آخرین نتیجه و مشاهده جزئیات</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>۴) هنگام درخواست اسنپ</h2>
+<div class="step">روی <b>مشاهده جزئیات</b> در اسنپ بزنید تا کیلومتر واقعی خوانده شود.</div>
+<div class="step">کارت تحلیل رایدو می‌آید: <span class="ok">سبز</span> / <span class="warn">زرد</span> / <span class="bad">قرمز</span></div>
+<div class="step">مدت کارت از تنظیمات قابل تغییر است؛ لمس صفحه زودتر می‌بندد.</div>
+</div>
+
+<div class="card">
+<h2>منطق تحلیل</h2>
+<ul>
+<li>معیار رنگ = درآمد ساعتی بعد کمیسیون</li>
+<li>زیر کف → قرمز | تا حدود ۱٫۲×کف → زرد | نزدیک هدف → سبز</li>
+<li>پرمیوم: مسیر خالی (H_shift) با ژئوکد و محدوده شهری</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>۵) تنظیمات</h2>
+<ul>
+<li>خودرو، سوخت، استهلاک، کارمزد</li>
+<li>کف تحلیلی و هدف ساعتی</li>
+<li>مدت نمایش کارت تحلیل</li>
+</ul>
+<p>حتماً <b>ذخیره تنظیمات</b> را بزنید.</p>
+</div>
+
+<div class="card">
+<h2>۶) گزارش‌ها</h2>
+<p>سفرهای ثبت‌شده، سود تقریبی و ترکیب تحلیل سبز/زرد/قرمز.</p>
+</div>
+
+<div class="card">
+<h2>۷) نکات</h2>
+<ul>
+<li>رایدو جایگزین اسنپ نیست.</li>
+<li>همیشه بعد از درخواست «مشاهده جزئیات» اسنپ را بزنید.</li>
+<li>پشتیبانی: <b>@TripAnalyzerSupport</b></li>
+</ul>
+</div>
+
+<p class="footer">رایدو — راهنمای نسخه ۲.۲ — فونت وزیر</p>
+</body>
+</html>

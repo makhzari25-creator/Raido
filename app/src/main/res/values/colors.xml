@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand">#ff2563EB</color>
+    <color name="ic_launcher_background">#ff2563EB</color>
+    <color name="verdictGray">#ff64748B</color>
+    <color name="verdictGreen">#ff16A34A</color>
+    <color name="verdictRed">#ffDC2626</color>
+    <color name="verdictYellow">#ffCA8A04</color>
+</resources>
