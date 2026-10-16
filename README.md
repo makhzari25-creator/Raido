@@ -1,14 +1,22 @@
 # RAIDO
 
-اپلیکیشن اندروید برای رانندگان اسنپ: تحلیل سریع (زیر ۲ ثانیه) اینکه درخواست سفر به‌صرفه است یا نه.
+اپلیکیشن اندروید برای رانندگان اسنپ: تحلیل سریع اینکه درخواست سفر به‌صرفه است یا نه.
+
+## نسخه
+**2.3.12** · versionCode **132**
+
+### تغییرات 2.3.12
+- یکتاسازی پای‌های تکراری Accessibility (فیکس دو برابر شدن مسافت/زمان)
+- تشخیص ROUND_TRIP از لوپ / بازگشت
+- توقف «X تا Y دقیقه» جدا از مدل سفر
+- بیلد release با **R8** (minify + shrink)
 
 ## بیلد
-- GitHub → **Actions → Build RAIDO APK → Run workflow**؛ فایل APK در Artifacts قرار می‌گیرد.
-- یا تگ بزنید (`git tag v2.3.10 && git push --tags`) تا APK در Releases منتشر شود.
-- محلی: `./gradlew assembleRelease` (JDK 17، Android SDK 34).
+- GitHub → **Actions → Build RAIDO APK → Run workflow**
+- یا تگ: `git tag v2.3.12 && git push --tags`
+- محلی: `./gradlew assembleRelease` (JDK 17، SDK 34)
 
-## امضای release (اختیاری)
-بدون تنظیم، با کلید debug امضا می‌شود. برای امضای ثابت، در Settings → Secrets → Actions اضافه کنید:
-`RAIDO_KEYSTORE_BASE64`, `RAIDO_KEYSTORE_PASSWORD`, `RAIDO_KEY_ALIAS`, `RAIDO_KEY_PASSWORD`
+## امضا
+Secrets: `RAIDO_KEYSTORE_BASE64`, `RAIDO_KEYSTORE_PASSWORD`, `RAIDO_KEY_ALIAS`, `RAIDO_KEY_PASSWORD`
 
-> نقشه (`.mbtiles`) داخل APK نیست و فقط توسط کاربر پرمیوم آپلود می‌شود.
+> نقشه `.mbtiles` داخل APK نیست؛ پرمیوم آپلود می‌کند.

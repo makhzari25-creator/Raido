@@ -9,8 +9,8 @@ android {
         applicationId "ir.tripanalyzer.app"
         minSdk 26
         targetSdk 34
-        versionCode 131
-        versionName "2.3.11"
+        versionCode 132
+        versionName "2.3.12"
     }
     // امضا از متغیرهای محیطی (GitHub Secrets) خوانده می‌شود؛ رمز در سورس نیست.
     // اگر تنظیم نشده باشد، با کلید debug امضا می‌شود تا بیلد همیشه کار کند.
@@ -28,7 +28,7 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled true      // R8: shrink + optimize + obfuscate
+            minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (hasReleaseKey) signingConfig signingConfigs.release
