@@ -9,11 +9,9 @@ android {
         applicationId "ir.tripanalyzer.app"
         minSdk 26
         targetSdk 34
-        versionCode 133
-        versionName "2.3.13"
+        versionCode 134
+        versionName "2.3.14"
     }
-    // امضا از متغیرهای محیطی (GitHub Secrets) خوانده می‌شود؛ رمز در سورس نیست.
-    // اگر تنظیم نشده باشد، با کلید debug امضا می‌شود تا بیلد همیشه کار کند.
     def ksPath = System.getenv("RAIDO_KEYSTORE_PATH")
     def hasReleaseKey = ksPath != null && file(ksPath).exists()
     signingConfigs {
