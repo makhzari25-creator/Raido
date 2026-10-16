@@ -156,7 +156,7 @@ public final class Pipeline {
                 String[] addrs = ParseLayer.INSTANCE.extractAddresses(rawText);
                 originAddr = addrs[0];
                 destAddr = addrs[1];
-                if (addrss.length > 2) dest2Addr = addrs[2];
+                if (addrs.length > 2) dest2Addr = addrs[2];
             } catch (Throwable ignored) {}
             originAddr = ParseLayer.INSTANCE.resolveOrigin(applicationContext, originAddr, duringTrip);
             // فقط سفر دو‌مقصده: dest2 برای محدوده معنا دارد (فیکس OUT جعلی ۷۸۰+ کم)
@@ -239,10 +239,6 @@ public final class Pipeline {
 
                     if (isFresh) {
                         Notifier.INSTANCE.show(applicationContext, analyze, currentTimeMillis, false, parse.getFare());
-                        try {
-                            if (zoneLabel != null) {
-                            }
-                        } catch (Throwable ignored) {}
                     }
                 }
             }
