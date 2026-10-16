@@ -7,12 +7,16 @@ import java.util.regex.Pattern;
 
 /**
  * پارس پای‌های اسنپ + تشخیص مدل سفر (یک‌مقصده / دو‌مقصده / رفت‌وبرگشت).
- * فاز ۱ قواعد قفل‌شده ۲۰۲۶-۱۰-۱۵.
+ *
+ * v2.3.12:
+ * - یکتاسازی پای‌های تکراری (فیکس دو برابر شدن به‌خاطر Accessibility تکراری)
+ * - تشخیص ROUND_TRIP از لوپ / بازگشت / رفت‌وبرگشت
+ * - بازه «X تا Y دقیقه» هرگز پای سفر یا ROUND_TRIP حساب نمی‌شود (فقط توقف)
  */
 public final class SnappLegParser {
     public static final SnappLegParser INSTANCE = new SnappLegParser();
 
-    public static final double TIME_TO_KM_SPEED = 30.0; // کم/ساعت ثابت
+    public static final double TIME_TO_KM_SPEED = 30.0;
 
     public enum TripKind {
         ONE_DEST,
@@ -42,13 +46,12 @@ public final class SnappLegParser {
         }
     }
 
-    /** نتیجهٔ کامل مدل سفر برای Pipeline */
     public static final class TripShape {
         public final TripKind kind;
-        public final Legs legs;           // پای‌های نهایی بعد از فرمول
+        public final Legs legs;
         public final int destCount;
-        public final boolean insufficient; // دو‌مقصده بدون داده کافی
-        public final String messageFa;     // برای کارت GRAY
+        public final boolean insufficient;
+        public final String messageFa;
         public final boolean usedTimeFallback;
 
         public TripShape(TripKind kind, Legs legs, int destCount,
@@ -75,12 +78,10 @@ public final class SnappLegParser {
                     + "(\\d+(?:[.,]\\d+)?)\\s*(کیلومتر|km|متر)"
     );
 
-    /** فقط زمان تا مبدأ */
     private static final Pattern TIME_PICKUP = Pattern.compile(
             "(\\d+(?:[.,]\\d+)?)\\s*دقیقه\\s*تا\\s*(?:رسیدن\\s*)?(?:به\\s*)?(مبد[اأ]?|مسافر|محل|سوار)"
     );
 
-    /** زمان مقصد (نه تا مبدأ) — ممکن چندبار */
     private static final Pattern TIME_TRIP = Pattern.compile(
             "(\\d+(?:[.,]\\d+)?)\\s*دقیقه"
                     + "(?!\\s*تا\\s*(?:رسیدن\\s*)?(?:به\\s*)?(?:مبد|مسافر|محل|سوار))"
@@ -90,9 +91,12 @@ public final class SnappLegParser {
             "(\\d+(?:[.,]\\d+)?)\\s*(کیلومتر|km)"
     );
 
-    /** از مقصد سفر فعلی + زمان */
     private static final Pattern DURING_PICKUP_TIME = Pattern.compile(
             "از\\s*مقصد\\s*سفر\\s*(?:فعلی)?[^\\d]{0,12}(\\d+(?:[.,]\\d+)?)\\s*دقیقه"
+    );
+
+    private static final Pattern STOP_RANGE = Pattern.compile(
+            "(\\d{1,3})\\s*تا\\s*(\\d{1,3})\\s*دقیقه"
     );
 
     private SnappLegParser() {}
@@ -111,7 +115,6 @@ public final class SnappLegParser {
             } else if (c == 0x066C || c == 0x060C) {
                 sb.append(',');
             } else if (c == '\u200c' || c == '\u200f' || c == '\u200e') {
-                // skip
             } else {
                 sb.append(c);
             }
@@ -142,6 +145,23 @@ public final class SnappLegParser {
         return minutes * (TIME_TO_KM_SPEED / 60.0);
     }
 
+    private static boolean isInsideStopRange(String text, int matchStart, int matchEnd) {
+        Matcher sr = STOP_RANGE.matcher(text);
+        while (sr.find()) {
+            if (matchStart >= sr.start() && matchEnd <= sr.end()) return true;
+            if (matchStart < sr.end() && matchEnd > sr.start()) return true;
+        }
+        return false;
+    }
+
+    private static void addUnique(List<Double> list, Double v, double eps) {
+        if (v == null || v <= 0) return;
+        for (Double x : list) {
+            if (x != null && Math.abs(x - v) <= eps) return;
+        }
+        list.add(v);
+    }
+
     public Legs extract(String raw) {
         return analyze(raw).legs;
     }
@@ -153,58 +173,53 @@ public final class SnappLegParser {
         List<Double> tripMins = new ArrayList<>();
         List<Double> tripKms = new ArrayList<>();
 
-        // ترکیبی مبدأ
         Matcher mPick = COMBINED_PICKUP.matcher(text);
         if (mPick.find()) {
             pMin = parseNum(mPick.group(1));
             pKm = toKm(parseNum(mPick.group(3)), mPick.group(4));
         }
 
-        // ترکیبی مقصد(ها)
         Matcher mTrip = COMBINED_TRIP.matcher(text);
         while (mTrip.find()) {
+            if (isInsideStopRange(text, mTrip.start(), mTrip.end())) continue;
             Double tm = parseNum(mTrip.group(1));
             Double tk = toKm(parseNum(mTrip.group(2)), mTrip.group(3));
             if (pMin != null && tm != null && Math.abs(tm - pMin) < 0.01) continue;
-            if (tm != null) tripMins.add(tm);
-            if (tk != null && tk > 0) tripKms.add(tk);
+            addUnique(tripMins, tm, 0.05);
+            addUnique(tripKms, tk, 0.05);
         }
 
-        // زمان‌فقط مبدأ
         if (pMin == null) {
             Matcher tp = TIME_PICKUP.matcher(text);
             if (tp.find()) pMin = parseNum(tp.group(1));
         }
-        // حین سفر: از مقصد سفر فعلی X دقیقه
         if (pMin == null) {
             Matcher dp = DURING_PICKUP_TIME.matcher(text);
             if (dp.find()) pMin = parseNum(dp.group(1));
         }
 
-        // زمان‌فقط مقصدها (اگر ترکیبی پر نکرد)
         if (tripMins.isEmpty()) {
             Matcher tt = TIME_TRIP.matcher(text);
             while (tt.find()) {
+                if (isInsideStopRange(text, tt.start(), tt.end())) continue;
                 Double tm = parseNum(tt.group(1));
                 if (tm == null) continue;
                 if (pMin != null && Math.abs(tm - pMin) < 0.01) continue;
-                // رد کردن بازه‌های توقف «۵ تا ۱۰ دقیقه»
                 int start = tt.start();
                 String around = text.substring(Math.max(0, start - 4), Math.min(text.length(), tt.end() + 8));
                 if (around.contains("تا") && around.matches("(?s).*\\d+\\s*تا\\s*\\d+.*")) {
                     continue;
                 }
-                tripMins.add(tm);
+                addUnique(tripMins, tm, 0.05);
             }
         }
 
-        // fallback کیلومتر بدون زمان
         if (pKm == null && tripKms.isEmpty()) {
             Matcher mk = ANY_KM.matcher(text);
             List<Double> kms = new ArrayList<>();
             while (mk.find()) {
                 Double k = toKm(parseNum(mk.group(1)), mk.group(2));
-                if (k != null && k > 0) kms.add(k);
+                addUnique(kms, k, 0.05);
             }
             if (kms.size() >= 2) {
                 pKm = kms.get(0);
@@ -214,14 +229,12 @@ public final class SnappLegParser {
             }
         }
 
-        // تشخیص مدل
         TripKind kind = detectKind(text, tripMins.size(), tripKms.size());
         int destCount = Math.max(1, Math.max(tripMins.size(), tripKms.size()));
         if (kind == TripKind.ONE_DEST) destCount = 1;
         if (kind == TripKind.TWO_DEST) destCount = Math.max(2, destCount);
         if (kind == TripKind.ROUND_TRIP) destCount = 1;
 
-        // جمع پای‌های مقصد
         Double tMin = null;
         Double tKm = null;
         if (!tripMins.isEmpty()) {
@@ -242,46 +255,35 @@ public final class SnappLegParser {
         if (kind == TripKind.TWO_DEST) {
             boolean hasKmData = tKm != null && tKm > 0;
             boolean hasMinData = tMin != null && tMin > 0;
-            // مبدأ هم ترجیحاً؛ ولی اگر فقط مقصدها باشند هنوز می‌شود تخمین زد
             if (!hasKmData && !hasMinData) {
                 insufficient = true;
                 msg = "سفر دو مقصده اما اطلاعات کافی وجود ندارد";
             } else if (!hasKmData && hasMinData) {
-                // تبدیل زمان مقصدها (+ مبدأ اگر هست) به کیلومتر برای موتور
-                double totalMin = tMin + (pMin != null ? pMin : 0);
                 tKm = minToKm(tMin);
                 if (pKm == null && pMin != null) {
                     pKm = minToKm(pMin);
                 }
                 usedTimeFallback = true;
-                // totalMin unused beyond that
             }
-            // اگر km هست همان جمع استفاده می‌شود
         } else if (kind == TripKind.ROUND_TRIP) {
-            // فرمول: pickup + 2×trip
             if (tKm != null && tKm > 0) {
-                double pick = pKm != null ? pKm : (pMin != null ? minToKm(pMin) : 0);
                 if (pKm == null && pMin != null) {
                     pKm = minToKm(pMin);
                     usedTimeFallback = true;
                 }
-                tKm = 2.0 * tKm; // در RawTrip جمع pickup+trip می‌شود → pickup + 2*origTrip
-                // Wait: TripEngine typically does pickupKm + tripKm.
-                // User formula: pickup + dest + dest = pickup + 2*dest
-                // So store tripKm as 2*dest, pickup as pickup. Good.
+                tKm = 2.0 * tKm;
+                if (tMin != null && tMin > 0) {
+                    tMin = 2.0 * tMin;
+                }
             } else if (tMin != null && tMin > 0) {
                 double pickMin = pMin != null ? pMin : 0;
-                double totalMin = pickMin + 2.0 * tMin;
                 pMin = pickMin > 0 ? pickMin : pMin;
                 tMin = 2.0 * tMin;
                 pKm = pMin != null && pMin > 0 ? minToKm(pMin) : pKm;
                 tKm = minToKm(tMin);
                 usedTimeFallback = true;
-            } else if (pKm == null && pMin == null) {
-                // هیچ داده — نه gray خاص دو مقصده
             }
         } else {
-            // ONE_DEST: اگر فقط زمان → تبدیل برای موتور در صورت نیاز TripEngine
             if ((tKm == null || tKm <= 0) && tMin != null && tMin > 0) {
                 tKm = minToKm(tMin);
                 usedTimeFallback = true;
@@ -298,22 +300,61 @@ public final class SnappLegParser {
 
     private TripKind detectKind(String text, int tripMinCount, int tripKmCount) {
         String t = text.replace('\u200c', ' ');
-        // رفت‌وبرگشت
-        if (t.contains("برگشت به مبدا") || t.contains("برگشت به مبدأ")
-                || t.contains("رفت و برگشت") || t.contains("رفت‌وبرگشت")
-                || t.contains("رفت برگشت")
-                || (t.contains("برگشت") && (t.contains("مبدا") || t.contains("مبدأ")))) {
+        if (looksLikeRoundTrip(t)) {
             return TripKind.ROUND_TRIP;
         }
-        // شمارش برچسب مقصد منهای عبارت حین سفر
-        String tCount = t.replace("از مقصد سفر فعلی", " ").replace("از مقصد سفر", " ");
+        String tCount = t
+                .replace("از مقصد سفر فعلی", " ")
+                .replace("از مقصد سفر", " ")
+                .replace("به مقصد رسیدید", " ")
+                .replace("نزدیک مقصد", " ");
         int destLabels = 0;
         Matcher dm = Pattern.compile("مقصد").matcher(tCount);
         while (dm.find()) destLabels++;
         if (destLabels >= 2 || tripMinCount >= 2 || tripKmCount >= 2) {
             return TripKind.TWO_DEST;
         }
+        if (t.contains("مقصد دوم") || t.contains("مقصد ۲") || t.contains("مقصد 2")
+                || t.contains("مقصد اضافه") || t.contains("توقفگاه بعدی")) {
+            return TripKind.TWO_DEST;
+        }
         return TripKind.ONE_DEST;
+    }
+
+    static boolean looksLikeRoundTrip(String t) {
+        if (t == null || t.isEmpty()) return false;
+        String s = t.replace('\u200c', ' ');
+        if (s.contains("برگشت به مبدا") || s.contains("برگشت به مبدأ")
+                || s.contains("بازگشت به مبدا") || s.contains("بازگشت به مبدأ")
+                || s.contains("رفت و برگشت") || s.contains("رفت‌وبرگشت")
+                || s.contains("رفت برگشت")
+                || s.contains("رفت و برگشت به")
+                || (s.contains("برگشت") && (s.contains("مبدا") || s.contains("مبدأ")))) {
+            return true;
+        }
+        if (s.contains("round trip") || s.contains("roundtrip") || s.contains("Round trip")) {
+            return true;
+        }
+        if (s.contains("لوپ") || s.contains("loop") || s.contains("Loop")
+                || s.contains("سفر رفت و برگشت")
+                || s.contains("آیکون برگشت") || s.contains("آیکون بازگشت")
+                || s.contains("icon_return") || s.contains("ic_return")
+                || s.contains("return_trip") || s.contains("return trip")
+                || s.contains("بازگشت به مقصد") || s.contains("برگشت به مقصد اول")
+                || s.contains("برگشت به مقصد")) {
+            return true;
+        }
+        Matcher nearReturn = Pattern.compile(
+                "(?:برگشت|بازگشت|loop|لوپ).{0,24}دقیقه|دقیقه.{0,24}(?:برگشت|بازگشت|loop|لوپ)"
+        ).matcher(s);
+        if (nearReturn.find()) {
+            int a = nearReturn.start();
+            int b = nearReturn.end();
+            if (!isInsideStopRange(s, a, b)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static NotificationParser.Parsed merge(NotificationParser.Parsed base, Legs legs) {
@@ -327,7 +368,6 @@ public final class SnappLegParser {
         return new NotificationParser.Parsed(fare, pKm, tKm, pMin, tMin, rial);
     }
 
-    /** ادغام با اولویت کامل TripShape (فرمول‌خورده) */
     public static NotificationParser.Parsed mergeShape(NotificationParser.Parsed base, TripShape shape) {
         if (shape == null) return base;
         return merge(base, shape.legs);
