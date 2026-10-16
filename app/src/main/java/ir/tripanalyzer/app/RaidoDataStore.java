@@ -80,7 +80,7 @@ public final class RaidoDataStore {
         } catch (Exception ignored) {}
     }
 
-    /** ثبت یک تحلیل — فقط فیلدهای سبک؛ بدون متن خام */
+    /** ثبت یک تحلیل — فیلدهای لازم برای داشبورد و گزارش */
     public void appendAnalysis(Context c, JSONObject recordFromStore) {
         if (c == null || recordFromStore == null) return;
         try {
@@ -100,6 +100,29 @@ public final class RaidoDataStore {
             if (recordFromStore.has("netAfter") && !recordFromStore.isNull("netAfter")) {
                 row.put("netAfter", recordFromStore.optDouble("netAfter"));
             }
+            // فیلدهای لازم گزارش (recent) — تا «رفتم» از تب ۷روز هم در گزارش بیاید
+            if (recordFromStore.has("net") && !recordFromStore.isNull("net")) {
+                row.put("net", recordFromStore.optDouble("net"));
+            } else if (recordFromStore.has("netAfter") && !recordFromStore.isNull("netAfter")) {
+                row.put("net", recordFromStore.optDouble("netAfter"));
+            }
+            if (recordFromStore.has("fuel") && !recordFromStore.isNull("fuel")) {
+                row.put("fuel", recordFromStore.optDouble("fuel"));
+            }
+            if (recordFromStore.has("dep") && !recordFromStore.isNull("dep")) {
+                row.put("dep", recordFromStore.optDouble("dep"));
+            }
+            if (recordFromStore.has("dist") && !recordFromStore.isNull("dist")) {
+                row.put("dist", recordFromStore.optDouble("dist"));
+            }
+            if (recordFromStore.has("rawTime") && !recordFromStore.isNull("rawTime")) {
+                row.put("rawTime", recordFromStore.optDouble("rawTime"));
+            }
+            if (recordFromStore.has("origin")) row.put("origin", recordFromStore.optString("origin"));
+            if (recordFromStore.has("dest")) row.put("dest", recordFromStore.optString("dest"));
+            if (recordFromStore.has("activityZoneStatus")) {
+                row.put("activityZoneStatus", recordFromStore.optString("activityZoneStatus"));
+            }
             row.put("accepted", false);
 
             // جدید اول لیست + حذف قدیمی‌تر از ۳ ماه
@@ -110,7 +133,7 @@ public final class RaidoDataStore {
                 JSONObject old = arr.optJSONObject(i);
                 if (old == null) continue;
                 long ts = old.optLong("ts", 0);
-                if (ts <= 0 || ts < cutoff) continue; // بدون ts یا قدیمی‌تر از ۳ ماه
+                if (ts <= 0 || ts < cutoff) continue;
                 next.put(old);
             }
             root.put("analyses", next);
@@ -138,6 +161,23 @@ public final class RaidoDataStore {
             if (found) writeRoot(c, root);
         } catch (Exception ignored) {}
     }
+
+    /** پیدا کردن ردیف تحلیل با ts (کپی برای ثبت در گزارش recent) */
+    public JSONObject findAnalysisByTs(Context c, long ts) {
+        if (c == null || ts <= 0) return null;
+        try {
+            JSONArray arr = analysesArray(c);
+            if (arr == null) return null;
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o != null && o.optLong("ts", -1) == ts) {
+                    return new JSONObject(o.toString());
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
     /** تحلیل‌های ۷ روز اخیر (جدید اول) — برای تب جزئیات */
     public org.json.JSONArray analysesLast7Days(Context c) {
         org.json.JSONArray out = new org.json.JSONArray();
@@ -171,7 +211,6 @@ public final class RaidoDataStore {
         return false;
     }
 
-
     public void incrementWrongReports(Context c) {
         if (c == null) return;
         try {
@@ -195,12 +234,10 @@ public final class RaidoDataStore {
         }
     }
 
-    /** آمار ۷ روز اخیر */
     public WeeklyStats computeWeekly(Context c) {
         return computeSince(c, WEEK_MS);
     }
 
-    /** آمار ۳۰ روز اخیر */
     public WeeklyStats computeMonthly(Context c) {
         return computeSince(c, MONTH_MS);
     }
@@ -267,7 +304,6 @@ public final class RaidoDataStore {
         }
     }
 
-    /** فقط رکوردهای داخل بازه نگهداری ۳ ماه (و دارای ts معتبر) */
     private JSONArray analysesRetained(Context c) {
         JSONArray arr = analysesArray(c);
         JSONArray out = new JSONArray();
@@ -284,7 +320,6 @@ public final class RaidoDataStore {
         return out;
     }
 
-    /** خلاصه داشبورد: میانگین ساعت جاری + میانگین امروز (ماه شمسی جاری) */
     public DashboardHourly snapshotDashboard(Context c) {
         DashboardHourly d = new DashboardHourly();
         if (c == null) return d;
@@ -323,7 +358,6 @@ public final class RaidoDataStore {
         return d;
     }
 
-    /** روزهای دارای داده در ماه شمسی جاری (جدیدترین اول) */
     public List<DaySummary> listDaysInCurrentMonth(Context c) {
         List<DaySummary> out = new ArrayList<>();
         if (c == null) return out;
@@ -370,7 +404,6 @@ public final class RaidoDataStore {
         return out;
     }
 
-    /** میانگین هر ساعت ۰..۲۳ برای یک روز شمسی */
     public HourBucket[] hoursForDay(Context c, int jy, int jm, int jd) {
         HourBucket[] buckets = new HourBucket[24];
         for (int i = 0; i < 24; i++) buckets[i] = new HourBucket(i);
@@ -397,13 +430,6 @@ public final class RaidoDataStore {
         return buckets;
     }
 
-
-    /**
-     * مرجع بازار برای ساعت جاری:
-     * ۱) میانگین hourly همین ساعتِ امروز
-     * ۲) اگر نمونه < ۵: میانگین همین ساعت در کل دادهٔ ۳ ماهه
-     * count < MARKET_MIN_SAMPLES → معتبر نیست (avg نادیده گرفته شود)
-     */
     public MarketRef marketRefForHour(Context c, int hourOfDay) {
         MarketRef ref = new MarketRef();
         if (c == null || hourOfDay < 0 || hourOfDay > 23) return ref;
@@ -438,7 +464,6 @@ public final class RaidoDataStore {
                 ref.count = nAll;
                 ref.scope = "hour_history";
             } else {
-                // اگر همین ساعت نمونه کافی ندارد: میانگین ساعت‌های همسایه (±1 و ±2)
                 double sumN = 0; int nN = 0;
                 for (int i = 0; i < arr.length(); i++) {
                     org.json.JSONObject o2 = arr.optJSONObject(i);
@@ -470,24 +495,39 @@ public final class RaidoDataStore {
         return marketRefForHour(c, Jalali.hourOfDay(System.currentTimeMillis()));
     }
 
-    public static final class MarketRef {
-        public double avg;
-        public int count;
-        public String scope = "insufficient";
-        public boolean isValid() { return count >= MARKET_MIN_SAMPLES && avg > 0; }
+    public float[] hourAvgsArray(Context c, int jy, int jm, int jd) {
+        HourBucket[] b = hoursForDay(c, jy, jm, jd);
+        float[] out = new float[24];
+        for (int i = 0; i < 24; i++) out[i] = (float) b[i].avg;
+        return out;
     }
 
-
-    /** میانگین hourly هفت روز اخیر شمسی (شاخص ۰ = قدیمی‌ترین در بازه ۷روز) */
-    public float[] last7DayHourlyAvgs(Context c) {
-        float[] out = new float[7];
-        if (c == null) return out;
+    public int[] last7DayCounts(Context c) {
+        int[] counts = new int[7];
+        if (c == null) return counts;
         try {
             long now = System.currentTimeMillis();
-            long dayMs = 24L * 60 * 60 * 1000;
-            double[] sum = new double[7];
-            int[] cnt = new int[7];
             JSONArray arr = analysesRetained(c);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o == null) continue;
+                long ts = o.optLong("ts", 0);
+                if (ts <= 0) continue;
+                int dayIndex = (int) ((now - ts) / (24L * 60 * 60 * 1000));
+                if (dayIndex >= 0 && dayIndex < 7) counts[6 - dayIndex]++;
+            }
+        } catch (Exception ignored) {}
+        return counts;
+    }
+
+    public float[] last7DayHourlyAvgs(Context c) {
+        float[] avgs = new float[7];
+        if (c == null) return avgs;
+        try {
+            long now = System.currentTimeMillis();
+            JSONArray arr = analysesRetained(c);
+            double[] sums = new double[7];
+            int[] ns = new int[7];
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject o = arr.optJSONObject(i);
                 if (o == null || !o.has("hourly") || o.isNull("hourly")) continue;
@@ -495,43 +535,19 @@ public final class RaidoDataStore {
                 if (ts <= 0) continue;
                 double h = o.optDouble("hourly", 0);
                 if (h <= 0) continue;
-                long age = now - ts;
-                if (age < 0 || age >= 7 * dayMs) continue;
-                int idx = 6 - (int) (age / dayMs); // 6 = today
-                if (idx < 0 || idx > 6) continue;
-                sum[idx] += h;
-                cnt[idx]++;
+                int dayIndex = (int) ((now - ts) / (24L * 60 * 60 * 1000));
+                if (dayIndex >= 0 && dayIndex < 7) {
+                    sums[6 - dayIndex] += h;
+                    ns[6 - dayIndex]++;
+                }
             }
             for (int i = 0; i < 7; i++) {
-                out[i] = cnt[i] > 0 ? (float) (sum[i] / cnt[i]) : 0f;
+                avgs[i] = ns[i] > 0 ? (float) (sums[i] / ns[i]) : 0f;
             }
         } catch (Exception ignored) {}
-        return out;
+        return avgs;
     }
 
-    /** تعداد تحلیل در ۷ روز اخیر (۰=قدیمی … ۶=امروز) برای هیت‌مپ */
-    public int[] last7DayCounts(Context c) {
-        int[] out = new int[7];
-        if (c == null) return out;
-        try {
-            long now = System.currentTimeMillis();
-            long dayMs = 24L * 60 * 60 * 1000;
-            JSONArray arr = analysesRetained(c);
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.optJSONObject(i);
-                if (o == null) continue;
-                long ts = o.optLong("ts", 0);
-                if (ts <= 0) continue;
-                long age = now - ts;
-                if (age < 0 || age >= 7 * dayMs) continue;
-                int idx = 6 - (int) (age / dayMs);
-                if (idx >= 0 && idx < 7) out[idx]++;
-            }
-        } catch (Exception ignored) {}
-        return out;
-    }
-
-    /** میانگین hourly سفرهای accepted در ۳ ماه */
     public AcceptedAvg acceptedHourlyAvg(Context c) {
         AcceptedAvg a = new AcceptedAvg();
         if (c == null) return a;
@@ -555,18 +571,6 @@ public final class RaidoDataStore {
         return a;
     }
 
-    /** مقادیر ۲۴ ساعته برای یک روز شمسی — برای نمودار */
-    public float[] hourAvgsArray(Context c, int jy, int jm, int jd) {
-        float[] out = new float[24];
-        try {
-            HourBucket[] b = hoursForDay(c, jy, jm, jd);
-            for (int i = 0; i < 24 && i < b.length; i++) {
-                out[i] = (float) b[i].avg;
-            }
-        } catch (Exception ignored) {}
-        return out;
-    }
-
     public static final class AcceptedAvg {
         public double avg;
         public int count;
@@ -583,21 +587,24 @@ public final class RaidoDataStore {
 
     public static final class DaySummary {
         public int jy, jm, jd;
-        public String label = "";
-        public double sum, avg;
+        public String label;
+        public double sum;
         public int count;
+        public double avg;
         public long anyTs;
     }
 
     public static final class HourBucket {
         public final int hour;
-        public double sum, avg;
+        public double sum;
         public int count;
+        public double avg;
         public HourBucket(int hour) { this.hour = hour; }
-        public String rangeLabel() {
-            int h2 = hour == 23 ? 24 : hour + 1;
-            return String.format(Locale.US, "%02d تا %02d", hour, h2);
-        }
     }
 
+    public static final class MarketRef {
+        public double avg;
+        public int count;
+        public String scope = "insufficient";
+    }
 }
