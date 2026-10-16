@@ -8,7 +8,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * رویدادهای حین سفر: توقف / مقصد دوم / آپدیت قیمت با کادر «متوجه شدم».
+ * رویدادهای حین سفر: توقف / مقصد دوم / لوپ‌برگشت / آپدیت قیمت با کادر «متوجه شدم».
+ *
+ * v2.3.12:
+ * - توقف «X تا Y دقیقه» فقط stopFee — هرگز ROUND_TRIP نمی‌سازد
+ * - لوپ / بازگشت به مقصد اول → tripKind=ROUND_TRIP روی activeTrip
+ * - مقصد دوم صریح → TWO_DEST
  */
 public final class MidTripEventParser {
     public static final MidTripEventParser INSTANCE = new MidTripEventParser();
@@ -27,7 +32,10 @@ public final class MidTripEventParser {
         return t.contains("متوجه شدم") || t.contains("متوجه شدم.");
     }
 
-    /** بیشینه دقیقه در بازه «۵ تا ۱۰ دقیقه» */
+    /**
+     * بیشینه دقیقه در بازه «۵ تا ۱۰ دقیقه» به‌عنوان توقف.
+     * این بازه مدل سفر را عوض نمی‌کند (نه ROUND_TRIP نه TWO_DEST).
+     */
     public Integer parseStopMaxMinutes(String raw) {
         String t = norm(raw);
         boolean stopHint = t.contains("توقف") || t.contains("صبر") || t.contains("انتظار");
@@ -36,22 +44,37 @@ public final class MidTripEventParser {
             int a = Integer.parseInt(range.group(1));
             int b = Integer.parseInt(range.group(2));
             int max = Math.max(a, b);
-            // اگر نشانه توقف نباشد ولی بازه نزدیک آیکون برگشت/توقف باشد باز هم قبول در حضور متوجه شدم
-            if (stopHint || hasUnderstoodButton(raw)) return max;
+            if (stopHint || hasUnderstoodButton(raw) || hasLoopOrReturnChrome(t)) {
+                return max;
+            }
         }
         Matcher one = Pattern.compile("توقف[^\\d]{0,12}(\\d{1,3})\\s*دقیقه").matcher(t);
         if (one.find()) return Integer.parseInt(one.group(1));
         return null;
     }
 
+    private boolean hasLoopOrReturnChrome(String t) {
+        return t.contains("لوپ") || t.contains("loop") || t.contains("Loop")
+                || t.contains("آیکون برگشت") || t.contains("آیکون بازگشت")
+                || t.contains("icon_return") || t.contains("ic_return")
+                || t.contains("return_trip");
+    }
+
     public boolean looksLikeSecondDest(String raw) {
         String t = norm(raw);
-        return t.contains("مقصد دوم") || t.contains("مقصد ۲")
+        return t.contains("مقصد دوم") || t.contains("مقصد ۲") || t.contains("مقصد 2")
                 || t.contains("مقصد اضافه") || t.contains("توقفگاه بعدی")
                 || (t.contains("مسافر") && t.contains("مقصد") && t.contains("اضافه"));
     }
 
-    /** قیمت بزرگ روی کارت (تومان) */
+    public boolean looksLikeRoundTripLoop(String raw) {
+        String t = norm(raw);
+        if (!SnappLegParser.looksLikeRoundTrip(t)) {
+            return false;
+        }
+        return true;
+    }
+
     public Double parseUpdatedFareToman(String raw) {
         String t = norm(raw);
         Matcher m = Pattern.compile("(\\d{1,3}(?:[\\d,٬]{3,12}))\\s*(تومان|ریال)").matcher(t);
@@ -68,21 +91,16 @@ public final class MidTripEventParser {
         return best;
     }
 
-    /**
-     * اگر صفحه رویداد حین سفر باشد، activeTrip را آپدیت می‌کند.
-     * @return true اگر تغییری اعمال شد
-     */
     public boolean tryUpdateActiveTrip(Context ctx, String raw) {
         if (ctx == null || raw == null) return false;
-        // بدون «متوجه شدم» معمولاً دیالوگ تأیید اسنپ نیست — برای توقف بازه+توقف هم کافی است
+
         Integer stopMin = parseStopMaxMinutes(raw);
         boolean second = looksLikeSecondDest(raw);
+        boolean roundLoop = looksLikeRoundTripLoop(raw);
         boolean understood = hasUnderstoodButton(raw);
         Double fare = parseUpdatedFareToman(raw);
 
-        if (!understood && stopMin == null && !second) return false;
-        // اگر فقط قیمت بدون کانتکست — نادیده
-        if (!understood && stopMin == null && !second) return false;
+        if (!understood && stopMin == null && !second && !roundLoop) return false;
 
         JSONObject active = Store.INSTANCE.getActiveTrip(ctx);
         if (active == null) return false;
@@ -93,7 +111,6 @@ public final class MidTripEventParser {
                 int fee = stopMin * STOP_FEE_PER_MIN;
                 active.put("stopMin", stopMin);
                 active.put("stopFeeToman", fee);
-                // به fare اضافه کن اگر هنوز اعمال نشده
                 double base = active.optDouble("fare", 0);
                 double prevStop = active.optDouble("stopFeeApplied", 0);
                 if (Math.abs(prevStop - fee) > 0.5) {
@@ -103,21 +120,29 @@ public final class MidTripEventParser {
                     changed = true;
                 }
             }
+
             if (second) {
                 active.put("tripKind", "TWO_DEST");
                 active.put("midTripSecondDest", true);
                 changed = true;
+            } else if (roundLoop) {
+                String cur = active.optString("tripKind", "ONE_DEST");
+                if (!"TWO_DEST".equals(cur)) {
+                    active.put("tripKind", "ROUND_TRIP");
+                    active.put("midTripRoundTrip", true);
+                    changed = true;
+                }
             }
+
             if (fare != null && fare > 0 && understood) {
-                // قیمت جدید اسنپ جایگزین (شامل توقف/مقصد دوم)
                 active.put("fare", fare);
                 active.put("fareUpdatedMidTrip", true);
                 changed = true;
             }
+
             if (changed) {
                 active.put("midTripUpdatedAt", System.currentTimeMillis());
                 Store.INSTANCE.saveActiveTrip(ctx, active);
-                // اگر last همان ts است همگام کن
                 JSONObject last = Store.INSTANCE.last(ctx);
                 if (last != null && last.optLong("ts", -1) == active.optLong("ts", -2)) {
                     last.put("fare", active.optDouble("fare"));
