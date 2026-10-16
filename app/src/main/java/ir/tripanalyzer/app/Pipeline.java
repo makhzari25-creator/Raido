@@ -65,11 +65,9 @@ public final class Pipeline {
         Store store = Store.INSTANCE;
         Intrinsics.checkNotNull(applicationContext);
         if (store.isAnalysisEnabled(applicationContext) && LicenseStore.INSTANCE.canUseAnalysis(applicationContext) && ParseLayer.INSTANCE.looksLikeTripRequest(rawText)) {
-            // [ParseLayer] مدل سفر + پارس ادغام‌شده (فاز ۱)
             SnappLegParser.TripShape shape = ParseLayer.INSTANCE.analyzeShape(rawText);
             SnappLegParser.Legs legs = shape.legs;
             NotificationParser.Parsed parse = ParseLayer.INSTANCE.parseMerged(rawText);
-            // دو‌مقصده بدون داده کافی → GRAY فوری (بدون نیاز به جزئیات کامل)
             if (shape.insufficient) {
                 try {
                     EngineSettings esGray = Store.INSTANCE.settings(applicationContext);
@@ -97,7 +95,6 @@ public final class Pipeline {
             if (!ScreenHints.shouldAnalyzeNow(rawText, parse)) {
                 return;
             }
-            // با آمدن قیمت/امضای جدید، کارت قبلی فوری کنار برود تا درخواست بعدی سریع دیده شود
             try {
                 Double curF = parse.getFare();
                 if (curF != null) {
@@ -138,7 +135,6 @@ public final class Pipeline {
                     engineSettings,
                     applicationContext);
 
-            // لایهٔ Premium: H_شیفت + برچسب محدوده + شواهد API نشان
             String zoneLabel = null;
             String geoStatus = null;
             String originAddr = null;
@@ -154,18 +150,20 @@ public final class Pipeline {
             String activityZoneStatus = "disabled";
             Double activityZoneDistanceKm = null;
             boolean activityZoneMode = false;
-            // [ParseLayer] آدرس + تشخیص حین سفر + مبدأ از activeTrip
             boolean duringTrip = ParseLayer.INSTANCE.isDuringTripRequest(rawText);
             String dest2Addr = null;
             try {
                 String[] addrs = ParseLayer.INSTANCE.extractAddresses(rawText);
                 originAddr = addrs[0];
                 destAddr = addrs[1];
-                if (addrs.length > 2) dest2Addr = addrs[2];
+                if (addrss.length > 2) dest2Addr = addrs[2];
             } catch (Throwable ignored) {}
             originAddr = ParseLayer.INSTANCE.resolveOrigin(applicationContext, originAddr, duringTrip);
+            // فقط سفر دو‌مقصده: dest2 برای محدوده معنا دارد (فیکس OUT جعلی ۷۸۰+ کم)
+            if (shape.kind != SnappLegParser.TripKind.TWO_DEST) {
+                dest2Addr = null;
+            }
 
-            // [GeoLayer] پرمیوم: نشان + محدوده + recolor — همان شرایط قبلی
             {
                 GeoLayer.Enrichment en = GeoLayer.INSTANCE.enrich(
                         applicationContext, analyze, parse.getFare(),
@@ -218,7 +216,6 @@ public final class Pipeline {
                         } catch (Throwable ignored) {}
                     } catch (Throwable ignored) {}
                     Store.INSTANCE.saveLast(applicationContext, rec);
-                    // [TripLifecycle] سفر عادی → activeTrip
                     TripLifecycle.INSTANCE.bindActiveIfNormal(
                             applicationContext, rec, duringTrip, isFresh, analyze.getVerdict());
                     try {
@@ -234,7 +231,6 @@ public final class Pipeline {
                     ReportAutoSave.INSTANCE.markPending(applicationContext);
 
                     try {
-                        // پاپ‌آپ «آیا سفر رفتی؟» حذف شد — ثبت با دیدن «پایان سفر» یا دستی در جزئیات
                         if (isFresh) {
                             Store.INSTANCE.recordVerdict(applicationContext, analyze.getVerdict());
                         }
@@ -243,10 +239,8 @@ public final class Pipeline {
 
                     if (isFresh) {
                         Notifier.INSTANCE.show(applicationContext, analyze, currentTimeMillis, false, parse.getFare());
-                        // برچسب محدوده را هم به overlay بفرست (از طریق آخرین rec)
                         try {
                             if (zoneLabel != null) {
-                                // Notifier از last می‌خواند در صورت نیاز
                             }
                         } catch (Throwable ignored) {}
                     }
