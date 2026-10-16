@@ -28,8 +28,8 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            shrinkResources false
+            minifyEnabled true      // R8: shrink + optimize + obfuscate
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (hasReleaseKey) signingConfig signingConfigs.release
             else signingConfig signingConfigs.debug

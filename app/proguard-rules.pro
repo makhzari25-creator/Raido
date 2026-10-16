@@ -25,3 +25,11 @@
 -keep class org.json.** { *; }
 -keepattributes SourceFile,LineNumberTable,*Annotation*,Signature,InnerClasses,EnclosingMethod
 -renamesourcefileattribute SourceFile
+
+# WebView JS bridge (ActivityZoneActivity.Bridge)
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,SourceFile,LineNumberTable
+-dontwarn kotlin.**
+-dontwarn org.jetbrains.annotations.**

@@ -50,12 +50,23 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --stacktrace
 
+      - name: Verify R8 ran
+        run: |
+          ls -la app/build/outputs/mapping/release/ || { echo "mapping.txt missing: R8 did not run"; exit 1; }
+          test -s app/build/outputs/mapping/release/mapping.txt
+
       - name: Rename APK
         run: |
           VER=$(grep -oP 'versionName "\K[^"]+' app/build.gradle)
           mkdir -p dist
           cp app/build/outputs/apk/release/*.apk "dist/RAIDO-v${VER}.apk"
           ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RAIDO-r8-mapping
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
