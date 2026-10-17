@@ -1,0 +1,79 @@
+name: Supabase Bootstrap (یک‌بار)
+
+# یک‌بار اجرا شود: کلید امضا می‌سازد، secretهای توابع را ست می‌کند و webhook تلگرام را وصل می‌کند.
+on:
+  workflow_dispatch:
+    inputs:
+      generate_signing_key:
+        description: "ساخت کلید امضای جدید (فقط بار اول! تغییرش نیاز به آپدیت اپ دارد)"
+        type: boolean
+        default: false
+      set_webhook:
+        description: "وصل‌کردن webhook ربات تلگرام"
+        type: boolean
+        default: true
+
+env:
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  PROJECT_REF: atzyjiljtzxhctblziti
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Check secrets
+        env:
+          TG: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ADM: ${{ secrets.ADMIN_KEY }}
+        run: |
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || { echo "::error::Secret SUPABASE_ACCESS_TOKEN is missing"; exit 1; }
+          [ -n "$TG" ]  || { echo "::error::Secret TELEGRAM_BOT_TOKEN is missing"; exit 1; }
+          [ ${#ADM} -ge 16 ] || { echo "::error::Secret ADMIN_KEY must be at least 16 characters"; exit 1; }
+
+      - name: Generate signing key
+        if: ${{ inputs.generate_signing_key }}
+        run: |
+          openssl genrsa -out k.pem 2048
+          openssl pkcs8 -topk8 -nocrypt -in k.pem -outform DER | base64 -w0 > priv.b64
+          openssl rsa -in k.pem -pubout -outform DER 2>/dev/null | base64 -w0 > pub.b64
+          echo "SIGNING_PRIVATE_KEY=$(cat priv.b64)" >> funcs.env
+          echo "::notice title=RAIDO_PUBLIC_KEY::$(cat pub.b64)"
+          rm -f k.pem priv.b64
+
+      - name: Prepare webhook secret
+        if: ${{ inputs.set_webhook }}
+        run: |
+          WH=$(openssl rand -hex 24)
+          echo "TELEGRAM_WEBHOOK_SECRET=$WH" >> funcs.env
+          echo "WH_SECRET=$WH" >> "$GITHUB_ENV"
+
+      - name: Set function secrets
+        env:
+          TG: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          ADM: ${{ secrets.ADMIN_KEY }}
+        run: |
+          echo "TELEGRAM_BOT_TOKEN=$TG" >> funcs.env
+          echo "ADMIN_KEY=$ADM" >> funcs.env
+          echo "TELEGRAM_BOT_USERNAME=TripAnalyzerbot" >> funcs.env
+          supabase secrets set --env-file funcs.env --project-ref "$PROJECT_REF"
+          rm -f funcs.env
+
+      - name: Set Telegram webhook
+        if: ${{ inputs.set_webhook }}
+        env:
+          TG: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          echo "Bot:"; curl -sS "https://api.telegram.org/bot${TG}/getMe" | python3 -c "import sys,json;r=json.load(sys.stdin);print(r.get('ok'), r.get('result',{}).get('username'))"
+          RES=$(curl -sS "https://api.telegram.org/bot${TG}/setWebhook" \
+            --data-urlencode "url=https://${PROJECT_REF}.supabase.co/functions/v1/telegram-webhook" \
+            --data-urlencode "secret_token=${WH_SECRET}" \
+            --data-urlencode 'allowed_updates=["message"]' \
+            --data-urlencode "drop_pending_updates=true")
+          echo "$RES"
+          echo "$RES" | grep -q '"ok":true' || { echo "::error::setWebhook failed"; exit 1; }
