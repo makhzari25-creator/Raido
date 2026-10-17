@@ -133,10 +133,15 @@ public final class MainActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         // دوره آزمایشی فعلاً غیرفعال است؛ فقط در صورت فعال بودن TRIAL_ENABLED شروع می‌شود
         LicenseStore.INSTANCE.ensureTrialStarted(this);
-        // قفل ساعت یا بدون فعال‌سازی → صفحه کد
-        if (LicenseStore.INSTANCE.isClockLocked(this)
-                || (!LicenseStore.INSTANCE.hasEverActivated(this)
-                    && !LicenseStore.INSTANCE.canUseAnalysis(this))) {
+        // بدون ورود → صفحه ورود با تلگرام
+        if (!LicenseStore.INSTANCE.isLoggedIn(this)) {
+            startActivity(new Intent(this, (Class<?>) LoginActivity.class));
+            finish();
+            return;
+        }
+        // بدون فعال‌سازی → صفحه کد / تست رایگان
+        if (!LicenseStore.INSTANCE.hasEverActivated(this)
+                && !LicenseStore.INSTANCE.canUseAnalysis(this)) {
             startActivity(new Intent(this, (Class<?>) ActivationActivity.class));
             finish();
             return;

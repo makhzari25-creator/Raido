@@ -9,8 +9,8 @@ android {
         applicationId "ir.tripanalyzer.app"
         minSdk 26
         targetSdk 34
-        versionCode 134
-        versionName "2.3.14"
+        versionCode 140
+        versionName "3.0.0"
     }
     def ksPath = System.getenv("RAIDO_KEYSTORE_PATH")
     def hasReleaseKey = ksPath != null && file(ksPath).exists()

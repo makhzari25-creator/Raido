@@ -41,6 +41,11 @@ public final class ActivationActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         try {
+            if (!LicenseStore.INSTANCE.isLoggedIn(this)) {
+                startActivity(new Intent(this, LoginActivity.class));
+                finish();
+                return;
+            }
             renewMode = getIntent() != null && getIntent().getBooleanExtra(EXTRA_RENEW, false);
             // فقط وقتی تمدید نیست و اشتراک فعال است → داشبورد
             if (!renewMode && LicenseStore.INSTANCE.canUseAnalysis(this)) {
@@ -150,7 +155,7 @@ public final class ActivationActivity extends BaseActivity {
         card.addView(lab);
 
         codeInput = new EditText(this);
-        codeInput.setHint("RAIDO-XXXX-XXXX");
+        codeInput.setHint("XXXX-XXXX-XXXX");
         codeInput.setTextSize(14f);
         codeInput.setSingleLine(true);
         codeInput.setTextColor(INK);
@@ -215,6 +220,39 @@ public final class ActivationActivity extends BaseActivity {
         card.addView(status);
         body.addView(card);
 
+        if (LicenseStore.INSTANCE.trialAvailable(this)) {
+            LinearLayout tcard = whiteCard(false);
+            TextView tt = new TextView(this);
+            tt.setText("🎁 تست رایگان ۷ روزه");
+            tt.setTextSize(16f);
+            tt.setTypeface(Typeface.DEFAULT_BOLD);
+            tt.setTextColor(INK);
+            tcard.addView(tt);
+            TextView td = new TextView(this);
+            td.setText("کد نداری؟ همین حالا ۷ روز تحلیل رایگان بگیر. فقط یک‌بار برای هر شماره و دستگاه.");
+            td.setTextSize(13f);
+            td.setTextColor(MUTED);
+            td.setPadding(0, dp(4), 0, 0);
+            tcard.addView(td);
+            final Button tb = new Button(this);
+            tb.setText("شروع تست رایگان");
+            tb.setAllCaps(false);
+            tb.setTextColor(Color.WHITE);
+            tb.setTypeface(Typeface.DEFAULT_BOLD);
+            GradientDrawable tbg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0xFF14B8A6, 0xFF0F766E});
+            tbg.setCornerRadius(dp(14));
+            tb.setBackground(tbg);
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(-1, -2);
+            tlp.topMargin = dp(10);
+            tb.setLayoutParams(tlp);
+            tb.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { doTrial(tb); }
+            });
+            tcard.addView(tb);
+            body.addView(tcard);
+        }
+
         LinearLayout why = whiteCard(false);
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
@@ -266,26 +304,66 @@ public final class ActivationActivity extends BaseActivity {
         try { Fonts.INSTANCE.applyRecursive(shell); } catch (Exception ignored) {}
     }
 
-    private void doActivate() {
-        try {
-            String code = codeInput != null && codeInput.getText() != null
-                    ? codeInput.getText().toString().trim() : "";
-            int r = LicenseStore.INSTANCE.activateWithCode(this, code);
-            if (r == 0) {
-                Toast.makeText(this, renewMode ? "تمدید/ارتقا موفق — داده‌ها حفظ شد" : "فعال‌سازی موفق", Toast.LENGTH_SHORT).show();
-                goMain();
-            } else if (r == 4) {
-                Toast.makeText(this, "این کد قبلاً مصرف شده", Toast.LENGTH_LONG).show();
-            } else if (r == 5) {
-                Toast.makeText(this, "مهلت فعال‌سازی این کد (۷۲ ساعت) تمام شده — از پشتیبانی کد جدید بگیر", Toast.LENGTH_LONG).show();
-            } else if (r == 6) {
-                Toast.makeText(this, "قفل امنیتی ساعت — کد جدید از پشتیبانی لازم است", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(this, "کد نامعتبر است", Toast.LENGTH_SHORT).show();
+    private void doTrial(final Button b) {
+        b.setEnabled(false);
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final int r = LicenseStore.INSTANCE.startTrial(ActivationActivity.this);
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        if (r == 0) {
+                            Toast.makeText(ActivationActivity.this, "تست ۷ روزه فعال شد", Toast.LENGTH_SHORT).show();
+                            goMain();
+                            return;
+                        }
+                        b.setEnabled(true);
+                        Toast.makeText(ActivationActivity.this, messageFor(r), Toast.LENGTH_LONG).show();
+                    }
+                });
             }
-        } catch (Throwable t) {
-            Toast.makeText(this, "خطا در فعال‌سازی", Toast.LENGTH_SHORT).show();
+        }).start();
+    }
+
+    private String messageFor(int r) {
+        switch (r) {
+            case 1: return "کد نامعتبر است";
+            case 4: return "این کد قبلاً مصرف شده";
+            case 5: return "این کد منقضی شده — از پشتیبانی کد جدید بگیر";
+            case 8: return "تلاش اشتباه زیاد؛ ۱۰ دقیقه بعد دوباره امتحان کن";
+            case 9: return "تست رایگان قبلاً برای این شماره یا دستگاه استفاده شده";
+            case 7:
+                startActivity(new Intent(this, LoginActivity.class));
+                finish();
+                return "دوباره وارد شو";
+            default: return "خطای اتصال — اینترنت را بررسی کن";
         }
+    }
+
+    private void doActivate() {
+        final String code = codeInput != null && codeInput.getText() != null
+                ? codeInput.getText().toString().trim() : "";
+        if (code.isEmpty()) {
+            Toast.makeText(this, "کد را وارد کن", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Toast.makeText(this, "در حال بررسی…", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final int r = LicenseStore.INSTANCE.activateWithCode(ActivationActivity.this, code);
+                runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        if (r == 0) {
+                            Toast.makeText(ActivationActivity.this,
+                                    renewMode ? "تمدید/ارتقا موفق — داده‌ها حفظ شد" : "فعال‌سازی موفق",
+                                    Toast.LENGTH_SHORT).show();
+                            goMain();
+                        } else {
+                            Toast.makeText(ActivationActivity.this, messageFor(r), Toast.LENGTH_LONG).show();
+                        }
+                    }
+                });
+            }
+        }).start();
     }
 
     private void goMain() {

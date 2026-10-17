@@ -57,6 +57,7 @@ public final class App extends Application {
         ctx = app;
         Fonts.INSTANCE.init(app);
         Notifier.INSTANCE.ensureChannels(app);
+        CloudSync.syncIfDue(app);
         registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
             @Override public void onActivityCreated(Activity activity, Bundle savedInstanceState) {}
             @Override public void onActivityStarted(Activity activity) {}

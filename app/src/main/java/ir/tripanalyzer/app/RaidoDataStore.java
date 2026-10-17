@@ -80,6 +80,7 @@ public final class RaidoDataStore {
 
     public void appendAnalysis(Context c, JSONObject recordFromStore) {
         if (c == null || recordFromStore == null) return;
+        UsageCounter.onAnalysis(c);
         try {
             JSONObject root = readRoot(c);
             JSONArray arr = root.optJSONArray("analyses");
@@ -138,6 +139,7 @@ public final class RaidoDataStore {
 
     public void markAccepted(Context c, long ts) {
         if (c == null || ts <= 0) return;
+        UsageCounter.onAccepted(c);
         try {
             JSONObject root = readRoot(c);
             JSONArray arr = root.optJSONArray("analyses");

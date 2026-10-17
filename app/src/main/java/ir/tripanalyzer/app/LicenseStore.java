@@ -2,49 +2,33 @@ package ir.tripanalyzer.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
+import android.os.SystemClock;
 import android.provider.Settings;
+
+import org.json.JSONObject;
+
 import java.security.MessageDigest;
 import java.util.concurrent.TimeUnit;
 
 /**
- * لایسنس RAIDO v2.2.17
- * - ۵ نوع کد: تست۷ / ماهانه / سالانه / پرمیوم‌ماهانه / پرمیوم‌سالانه
- * - پنجرهٔ فعال‌سازی ۷۲ ساعت از تولید
- * - قفل به اثرانگشت دستگاه
- * - یک‌بارمصرف روی دستگاه (لیست هش محلی)
- * - مستر نامحدود
- * - فلگ Premium برای لایهٔ نشان
+ * لایسنس RAIDO v3 — مبتنی بر سرور (Supabase).
+ * وضعیت اشتراک را سرور با امضای RSA صادر می‌کند؛ اپ فقط امضا را با کلید عمومی تأیید می‌کند.
+ * هیچ راز/الگوریتم تولید کد داخل APK نیست. تحلیل بدون اینترنت هم کار می‌کند (تا پایان مهلت آفلاین).
  */
 public final class LicenseStore {
     public static final LicenseStore INSTANCE = new LicenseStore();
 
-    private static final String PREFS = "raido_license";
+    private static final String PREFS = "raido_cloud_license";
+    private static final String K_TOKEN = "token";
+    private static final String K_PAYLOAD = "payload";
+    private static final String K_SIG = "sig";
+    private static final String K_DEVICE_FP = "device_fp";
+    private static final String K_ANC_EL = "anc_el";
+    private static final String K_ANC_SRV = "anc_srv";
+    private static final String K_ANC_BOOT = "anc_boot";
 
-    private static final String KEY_TRIAL_START = "trial_start_ms";
-    private static final String KEY_TRIAL_USED = "trial_used";
-    private static final String KEY_SUB_EXPIRY = "sub_expiry_ms";
-    private static final String KEY_SUB_TYPE = "sub_type";
-    private static final String KEY_DEVICE_FP = "device_fp";
-    private static final String KEY_LAST_PAYMENT_REF = "last_payment_ref";
-
-    private static final String KEY_ACT_CODE = "act_code_norm";
-    private static final String KEY_ACT_CODE_HASH = "act_code_hash";
-    private static final String KEY_ACT_DEVICE = "act_device_fp";
-    private static final String KEY_ACT_AT = "act_at_ms";
-    private static final String KEY_ACT_EXPIRY = "act_expiry_ms";
-    private static final String KEY_ACT_MASTER = "act_is_master";
-    private static final String KEY_ACT_EVER = "act_ever_activated";
-    private static final String KEY_USED_CODES = "used_code_hashes";
-    private static final String KEY_PLAN_TYPE = "act_plan_type";
-    private static final String KEY_IS_PREMIUM = "act_is_premium";
-    private static final String KEY_CLOCK_LOCKED = "clock_tamper_lock";
-
-    public static final boolean TRIAL_ENABLED = false;
     public static final long TRIAL_DAYS = 7L;
-    public static final long ACTIVATION_DAYS = 30L;
-    public static final long MONTHLY_DAYS = 30L;
-    public static final long YEARLY_DAYS = 365L;
-
     public static final int PRICE_MONTHLY = 49000;
     public static final int PRICE_YEARLY = 499000;
     public static final int PRICE_PREMIUM_MONTHLY = 73500;
@@ -52,360 +36,275 @@ public final class LicenseStore {
     public static final String TELEGRAM_SUPPORT = "https://t.me/TripAnalyzerSupport";
     public static final String TELEGRAM_ID = "@TripAnalyzerSupport";
 
-    /** @deprecated زرین‌پال حذف شد */
-    @Deprecated
-    public static final String ZARINPAL_MERCHANT_ID = "";
+    private static final class Status {
+        String plan = "NONE";
+        boolean premium, trialUsed;
+        long expiresAt, serverTime, offlineUntil;
+    }
+
+    private volatile String memPayload, memSig;
+    private volatile Status memStatus;
 
     private LicenseStore() {}
 
-    private SharedPreferences prefs(Context context) {
-        return context.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    private SharedPreferences prefs(Context c) {
+        return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    public String getDeviceFingerprint(Context context) {
-        SharedPreferences p = prefs(context);
-        String cached = p.getString(KEY_DEVICE_FP, null);
+    // ─── دستگاه ───
+    public String getDeviceFingerprint(Context c) {
+        SharedPreferences p = prefs(c);
+        String cached = p.getString(K_DEVICE_FP, null);
         if (cached != null && !cached.isEmpty()) return cached;
-        String androidId = Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
-        if (androidId == null || androidId.isEmpty()) androidId = "unknown";
-        String fp = sha1Short(androidId + "|RAIDO|2026");
-        p.edit().putString(KEY_DEVICE_FP, fp).apply();
+        String id = Settings.Secure.getString(c.getContentResolver(), Settings.Secure.ANDROID_ID);
+        if (id == null || id.isEmpty()) id = "unknown";
+        String fp = sha1Short(id + "|RAIDO|2026");
+        p.edit().putString(K_DEVICE_FP, fp).apply();
         return fp;
     }
 
-    private String sha1Short(String input) {
+    private static String sha1Short(String s) {
         try {
-            byte[] dig = MessageDigest.getInstance("SHA-1").digest(input.getBytes("UTF-8"));
+            byte[] d = MessageDigest.getInstance("SHA-1").digest(s.getBytes("UTF-8"));
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < 8; i++) {
-                String h = Integer.toHexString(dig[i] & 0xFF);
-                if (h.length() == 1) sb.append('0');
-                sb.append(h);
-            }
-            return sb.toString().toUpperCase();
+            for (int i = 0; i < 8; i++) sb.append(String.format("%02X", d[i] & 0xFF));
+            return sb.toString();
         } catch (Exception e) {
             return "ERR00000";
         }
     }
 
-    private String sha256Hex(String input) {
+    // ─── ورود / توکن ───
+    public boolean isLoggedIn(Context c) {
+        String t = prefs(c).getString(K_TOKEN, null);
+        return t != null && t.length() >= 32;
+    }
+
+    public String getToken(Context c) {
+        return prefs(c).getString(K_TOKEN, null);
+    }
+
+    public void logout(Context c) {
+        prefs(c).edit().clear().apply();
+        memPayload = null; memSig = null; memStatus = null;
+    }
+
+    /** ذخیرهٔ ورود موفق (توکن + وضعیت امضاشده). */
+    public boolean saveLogin(Context c, String token, String payload, String sig) {
+        if (token == null || token.length() < 32) return false;
+        if (!saveStatus(c, payload, sig)) return false;
+        prefs(c).edit().putString(K_TOKEN, token).apply();
+        return true;
+    }
+
+    private static int bootCount(Context c) {
         try {
-            byte[] dig = MessageDigest.getInstance("SHA-256").digest(input.getBytes("UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : dig) {
-                String h = Integer.toHexString(b & 0xFF);
-                if (h.length() == 1) sb.append('0');
-                sb.append(h);
-            }
-            return sb.toString();
-        } catch (Exception e) {
-            return input;
+            return Settings.Global.getInt(c.getContentResolver(), Settings.Global.BOOT_COUNT, -1);
+        } catch (Throwable t) {
+            return -1;
         }
     }
 
-    // ─── Trial (disabled) ───
-    public void ensureTrialStarted(Context context) {
-        if (!TRIAL_ENABLED) return;
-        SharedPreferences p = prefs(context);
-        if (p.getBoolean(KEY_TRIAL_USED, false)) return;
-        if (p.getLong(KEY_TRIAL_START, 0L) == 0L) {
-            p.edit()
-                    .putLong(KEY_TRIAL_START, System.currentTimeMillis())
-                    .putBoolean(KEY_TRIAL_USED, true)
-                    .apply();
-        }
-    }
-
-    public boolean isInTrial(Context context) {
-        if (!TRIAL_ENABLED) return false;
-        long start = prefs(context).getLong(KEY_TRIAL_START, 0L);
-        if (start == 0L) return false;
-        return (System.currentTimeMillis() - start) < TimeUnit.DAYS.toMillis(TRIAL_DAYS);
-    }
-
-    public long getTrialDaysLeft(Context context) {
-        if (!TRIAL_ENABLED) return 0;
-        long start = prefs(context).getLong(KEY_TRIAL_START, 0L);
-        if (start == 0L) return 0;
-        long remaining = TimeUnit.DAYS.toMillis(TRIAL_DAYS) - (System.currentTimeMillis() - start);
-        if (remaining <= 0) return 0;
-        return TimeUnit.MILLISECONDS.toDays(remaining) + 1;
-    }
-
-    // ─── Legacy subscription (kept read-only; no Zarinpal) ───
-    public boolean isSubscribed(Context context) {
-        long expiry = prefs(context).getLong(KEY_SUB_EXPIRY, 0L);
-        return expiry > System.currentTimeMillis();
-    }
-
-    public long getSubscriptionDaysLeft(Context context) {
-        long expiry = prefs(context).getLong(KEY_SUB_EXPIRY, 0L);
-        if (expiry <= System.currentTimeMillis()) return 0;
-        return TimeUnit.MILLISECONDS.toDays(expiry - System.currentTimeMillis()) + 1;
-    }
-
-    public String getSubscriptionType(Context context) {
-        return prefs(context).getString(KEY_SUB_TYPE, "");
-    }
-
-    /** @deprecated پرداخت داخل‌اپ حذف شد */
-    @Deprecated
-    public void activateSubscription(Context context, String type, String paymentRef) {
-        long days = "yearly".equals(type) ? YEARLY_DAYS : MONTHLY_DAYS;
-        long now = System.currentTimeMillis();
-        long currentExpiry = prefs(context).getLong(KEY_SUB_EXPIRY, 0L);
-        long base = Math.max(now, currentExpiry);
-        long newExpiry = base + TimeUnit.DAYS.toMillis(days);
-        prefs(context).edit()
-                .putLong(KEY_SUB_EXPIRY, newExpiry)
-                .putString(KEY_SUB_TYPE, type)
-                .putString(KEY_LAST_PAYMENT_REF, paymentRef != null ? paymentRef : "")
+    /** ذخیرهٔ وضعیت فقط اگر امضا معتبر و متعلق به همین دستگاه باشد. */
+    public boolean saveStatus(Context c, String payload, String sig) {
+        Status s = parse(c, payload, sig);
+        if (s == null) return false;
+        prefs(c).edit()
+                .putString(K_PAYLOAD, payload).putString(K_SIG, sig)
+                .putLong(K_ANC_SRV, s.serverTime)
+                .putLong(K_ANC_EL, SystemClock.elapsedRealtime())
+                .putInt(K_ANC_BOOT, bootCount(c))
                 .apply();
+        memPayload = payload; memSig = sig; memStatus = s;
+        return true;
     }
 
-    // ─── Clock lock ───
-    public boolean isClockLocked(Context context) {
-        return prefs(context).getBoolean(KEY_CLOCK_LOCKED, false);
-    }
-
-    public void setClockLocked(Context context, boolean locked) {
-        SharedPreferences.Editor ed = prefs(context).edit().putBoolean(KEY_CLOCK_LOCKED, locked);
-        if (locked) {
-            // باطل کردن دسترسی تا کد جدید
-            ed.putLong(KEY_ACT_EXPIRY, 0L)
-              .putBoolean(KEY_ACT_MASTER, false)
-              .putBoolean(KEY_IS_PREMIUM, false);
-        }
-        ed.apply();
-    }
-
-    // ─── Activation codes ───
-
-    public boolean hasEverActivated(Context context) {
-        return prefs(context).getBoolean(KEY_ACT_EVER, false)
-                || prefs(context).getLong(KEY_ACT_AT, 0L) > 0;
-    }
-
-    public boolean isMasterActivated(Context context) {
-        return prefs(context).getBoolean(KEY_ACT_MASTER, false);
-    }
-
-    public boolean isPremium(Context context) {
-        if (isMasterActivated(context)) return true;
-        if (!isActivationActive(context)) return false;
-        return prefs(context).getBoolean(KEY_IS_PREMIUM, false);
-    }
-
-    public String getPlanTypeCode(Context context) {
-        return prefs(context).getString(KEY_PLAN_TYPE, "");
-    }
-
-    public boolean isActivationActive(Context context) {
-        if (isClockLocked(context)) return false;
-        SharedPreferences p = prefs(context);
-        if (p.getBoolean(KEY_ACT_MASTER, false)) return true;
-        long expiry = p.getLong(KEY_ACT_EXPIRY, 0L);
-        if (expiry <= 0) return false;
-        String bound = p.getString(KEY_ACT_DEVICE, "");
-        String fp = getDeviceFingerprint(context);
-        if (bound.length() > 0 && !bound.equals(fp)) return false;
-        return System.currentTimeMillis() < expiry;
-    }
-
-    public boolean isActivationExpired(Context context) {
-        SharedPreferences p = prefs(context);
-        if (p.getBoolean(KEY_ACT_MASTER, false)) return false;
-        if (!hasEverActivated(context)) return false;
-        long expiry = p.getLong(KEY_ACT_EXPIRY, 0L);
-        return expiry > 0 && System.currentTimeMillis() >= expiry;
-    }
-
-    public long getActivationDaysLeft(Context context) {
-        if (isMasterActivated(context)) return 9999;
-        long expiry = prefs(context).getLong(KEY_ACT_EXPIRY, 0L);
-        if (expiry <= System.currentTimeMillis()) return 0;
-        return TimeUnit.MILLISECONDS.toDays(expiry - System.currentTimeMillis()) + 1;
-    }
-
-    /**
-     * 0 = موفق
-     * 1 = کد نامعتبر
-     * 3 = خطا
-     * 4 = قبلاً مصرف شده
-     * 5 = خارج از پنجرهٔ ۷۲ ساعته
-     * 6 = قفل ساعت (باید کد جدید)
-     */
-    private boolean isCodeConsumed(Context context, String hash) {
-        if (hash == null || hash.isEmpty()) return false;
-        String blob = prefs(context).getString(KEY_USED_CODES, "");
-        if (blob == null || blob.isEmpty()) return false;
-        for (String h : blob.split("\\|")) {
-            if (hash.equals(h)) return true;
-        }
-        return false;
-    }
-
-    private void markCodeConsumed(Context context, String hash) {
-        if (hash == null || hash.isEmpty()) return;
-        if (isCodeConsumed(context, hash)) return;
-        String blob = prefs(context).getString(KEY_USED_CODES, "");
-        if (blob == null) blob = "";
-        if (!blob.isEmpty()) blob = blob + "|";
-        blob = blob + hash;
-        String[] parts = blob.split("\\|");
-        if (parts.length > 200) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = parts.length - 200; i < parts.length; i++) {
-                if (sb.length() > 0) sb.append('|');
-                sb.append(parts[i]);
-            }
-            blob = sb.toString();
-        }
-        prefs(context).edit().putString(KEY_USED_CODES, blob).apply();
-    }
-
-    public int activateWithCode(Context context, String rawCode) {
+    private Status parse(Context c, String payload, String sig) {
         try {
-            if (isClockLocked(context)) {
-                // اجازهٔ فعال‌سازی با کد جدید بعد از قفل ساعت
-            }
-
-            String norm = KeyHelper.normalize(rawCode);
-            if (norm.isEmpty()) return 1;
-
-            // مستر
-            if (KeyHelper.isMasterCode(norm)) {
-                prefs(context).edit()
-                        .putString(KEY_ACT_CODE, norm)
-                        .putString(KEY_ACT_CODE_HASH, sha256Hex(norm))
-                        .putString(KEY_ACT_DEVICE, getDeviceFingerprint(context))
-                        .putLong(KEY_ACT_AT, System.currentTimeMillis())
-                        .putLong(KEY_ACT_EXPIRY, Long.MAX_VALUE / 4)
-                        .putBoolean(KEY_ACT_MASTER, true)
-                        .putBoolean(KEY_ACT_EVER, true)
-                        .putBoolean(KEY_IS_PREMIUM, true)
-                        .putString(KEY_PLAN_TYPE, "MASTER")
-                        .putBoolean(KEY_CLOCK_LOCKED, false)
-                        .apply();
-                return 0;
-            }
-
-            KeyHelper.Parsed parsed = KeyHelper.parse(norm);
-            if (parsed == null || !parsed.valid || parsed.type == null) return 1;
-
-            long now = System.currentTimeMillis();
-            if (!KeyHelper.isWithinActivateWindow(parsed, now)) return 5;
-
-            String hash = sha256Hex(norm);
-            String fp = getDeviceFingerprint(context);
-            SharedPreferences p = prefs(context);
-
-            String existingHash = p.getString(KEY_ACT_CODE_HASH, "");
-            if (hash.equals(existingHash) && isActivationActive(context)) {
-                return 0;
-            }
-
-            if (isCodeConsumed(context, hash)) {
-                return 4;
-            }
-
-            KeyHelper.PlanType plan = parsed.type;
-            // تمدید / ارتقا: دادهٔ سفر و تنظیمات در Store جداست و اینجا پاک نمی‌شود.
-            // انقضا = max(انقضای فعلی، الان) + مدت پلن جدید → روزهای باقی‌مانده از بین نمی‌رود.
-            long currentExpiry = p.getLong(KEY_ACT_EXPIRY, 0L);
-            long base = Math.max(currentExpiry, now);
-            long expiry = base + TimeUnit.DAYS.toMillis(plan.days);
-            // اگر پلن جدید پرمیوم است، پرمیوم روشن می‌شود؛ اگر عادی است و قبلاً پرمیوم بود
-            // فقط وقتی پلن جدید صراحتاً عادی است، پرمیوم خاموش می‌شود (تعویض پلن).
-            // پرمیوم بودن فقط از روی نوع کد جدید (ارتقا با کد P/R، عادی با B/M/Y)
-            boolean newPremium = plan.premium;
-            p.edit()
-                    .putString(KEY_ACT_CODE, norm)
-                    .putString(KEY_ACT_CODE_HASH, hash)
-                    .putString(KEY_ACT_DEVICE, fp)
-                    .putLong(KEY_ACT_AT, now)
-                    .putLong(KEY_ACT_EXPIRY, expiry)
-                    .putBoolean(KEY_ACT_MASTER, false)
-                    .putBoolean(KEY_ACT_EVER, true)
-                    .putBoolean(KEY_IS_PREMIUM, newPremium)
-                    .putString(KEY_PLAN_TYPE, plan.name())
-                    .putBoolean(KEY_CLOCK_LOCKED, false)
-                    .apply();
-            markCodeConsumed(context, hash);
-            // عمداً هیچ‌چیز از Store / تاریخچه / تنظیمات پاک نمی‌شود
-            return 0;
-        } catch (Exception e) {
-            return 3;
+            if (!RaidoCloud.verify(payload, sig)) return null;
+            JSONObject j = new JSONObject(payload);
+            if (!getDeviceFingerprint(c).equals(j.optString("fp"))) return null;
+            Status s = new Status();
+            s.plan = j.optString("plan", "NONE");
+            s.premium = j.optBoolean("premium", false);
+            s.trialUsed = j.optBoolean("trial_used", false);
+            s.expiresAt = j.optLong("expires_at", 0L);
+            s.serverTime = j.optLong("server_time", 0L);
+            s.offlineUntil = j.optLong("offline_until", 0L);
+            return s;
+        } catch (Throwable t) {
+            return null;
         }
     }
 
-    public boolean canUseAnalysis(Context context) {
-        if (isClockLocked(context)) return false;
-        return isActivationActive(context) || isSubscribed(context) || isInTrial(context);
+    /** وضعیت کش‌شده؛ امضا فقط یک‌بار به‌ازای هر مقدار تأیید می‌شود (سریع برای مسیر تحلیل). */
+    private Status status(Context c) {
+        SharedPreferences p = prefs(c);
+        String payload = p.getString(K_PAYLOAD, null);
+        String sig = p.getString(K_SIG, null);
+        if (payload == null || sig == null) return null;
+        if (payload.equals(memPayload) && sig.equals(memSig)) return memStatus;
+        Status s = parse(c, payload, sig);
+        memPayload = payload; memSig = sig; memStatus = s;
+        return s;
     }
 
-    public boolean canViewHistory(Context context) {
-        return canUseAnalysis(context) || hasEverActivated(context) || isSubscribed(context);
+    /** زمان مؤثر: بر پایهٔ ساعت سرور + elapsedRealtime؛ تغییر ساعت گوشی اثری ندارد. */
+    private long effectiveNow(Context c) {
+        SharedPreferences p = prefs(c);
+        long srv = p.getLong(K_ANC_SRV, 0L);
+        long anc = p.getLong(K_ANC_EL, 0L);
+        long el = SystemClock.elapsedRealtime();
+        int boot = p.getInt(K_ANC_BOOT, -1);
+        boolean sameBoot = boot == bootCount(c) && el >= anc;
+        if (srv > 0 && sameBoot) return srv + (el - anc);
+        return Math.max(System.currentTimeMillis(), srv);
     }
 
-    public boolean hasAccess(Context context) {
-        return canUseAnalysis(context);
+    // ─── وضعیت ───
+    public boolean isActivationActive(Context c) {
+        Status s = status(c);
+        if (s == null) return false;
+        long n = effectiveNow(c);
+        return n < s.expiresAt && n < s.offlineUntil;
     }
 
-    public boolean isAccessActive(Context context) {
-        return canUseAnalysis(context);
+    public boolean isPremium(Context c) {
+        Status s = status(c);
+        return s != null && s.premium && isActivationActive(c);
     }
 
-    public String getStatusLabel(Context context) {
-        if (isClockLocked(context)) {
-            return "قفل امنیتی ساعت — کد جدید لازم است";
+    public boolean hasEverActivated(Context c) {
+        Status s = status(c);
+        return s != null && !"NONE".equals(s.plan);
+    }
+
+    public boolean isActivationExpired(Context c) {
+        return hasEverActivated(c) && !isActivationActive(c);
+    }
+
+    public boolean trialAvailable(Context c) {
+        Status s = status(c);
+        return s != null && !s.trialUsed && !isActivationActive(c);
+    }
+
+    public long getActivationDaysLeft(Context c) {
+        Status s = status(c);
+        if (s == null) return 0;
+        long left = Math.min(s.expiresAt, Long.MAX_VALUE) - effectiveNow(c);
+        return left <= 0 ? 0 : TimeUnit.MILLISECONDS.toDays(left) + 1;
+    }
+
+    public String getPlanTypeCode(Context c) {
+        Status s = status(c);
+        return s == null ? "" : s.plan;
+    }
+
+    /** نزدیک پایان مهلت آفلاین یا انقضا → همگام‌سازی پرتکرارتر. */
+    boolean needsFrequentSync(Context c) {
+        Status s = status(c);
+        if (s == null) return true;
+        long n = effectiveNow(c);
+        return s.offlineUntil - n < TimeUnit.DAYS.toMillis(3) || s.expiresAt - n < TimeUnit.DAYS.toMillis(1);
+    }
+
+    public boolean canUseAnalysis(Context c) { return isActivationActive(c); }
+    public boolean canViewHistory(Context c) { return isActivationActive(c) || hasEverActivated(c) || isLoggedIn(c); }
+    public boolean hasAccess(Context c) { return isActivationActive(c); }
+    public boolean isAccessActive(Context c) { return isActivationActive(c); }
+
+    // سازگاری با کد قبلی (قفل ساعت و مستر حذف شد)
+    public boolean isClockLocked(Context c) { return false; }
+    public void setClockLocked(Context c, boolean locked) {}
+    public boolean isMasterActivated(Context c) { return false; }
+    public void ensureTrialStarted(Context c) {}
+
+    private static String planFa(String plan) {
+        switch (plan) {
+            case "TRIAL_7": return "تست ۷ روزه";
+            case "MONTHLY": return "ماهانه عادی";
+            case "YEARLY": return "سالانه عادی";
+            case "PREMIUM_MONTHLY": return "پرمیوم ماهانه";
+            case "PREMIUM_YEARLY": return "پرمیوم سالانه";
+            default: return plan;
         }
-        if (isMasterActivated(context)) {
-            return "دسترسی نامحدود (مستر) · پرمیوم";
+    }
+
+    public String getStatusLabel(Context c) {
+        if (!isLoggedIn(c)) return "ورود لازم است";
+        Status s = status(c);
+        if (s == null) return "وضعیت نامعتبر — اتصال اینترنت لازم است";
+        if (isActivationActive(c)) {
+            return planFa(s.plan) + (s.premium ? " · پرمیوم" : "") + " · " + getActivationDaysLeft(c) + " روز باقی‌مانده";
         }
-        if (isActivationActive(context)) {
-            String plan = prefs(context).getString(KEY_PLAN_TYPE, "");
-            String planFa = plan;
-            try {
-                KeyHelper.PlanType t = KeyHelper.PlanType.valueOf(plan);
-                planFa = t.labelFa;
-            } catch (Exception ignored) {}
-            String prem = isPremium(context) ? " · پرمیوم" : "";
-            return planFa + prem + " · " + getActivationDaysLeft(context) + " روز باقی‌مانده";
-        }
-        if (isSubscribed(context)) {
-            String type = getSubscriptionType(context);
-            long days = getSubscriptionDaysLeft(context);
-            String typeFa = "yearly".equals(type) ? "سالانه" : "ماهانه";
-            return "اشتراک " + typeFa + " · " + days + " روز باقی‌مانده";
-        }
-        if (isInTrial(context)) {
-            return "دوره آزمایشی · " + getTrialDaysLeft(context) + " روز باقی‌مانده";
-        }
-        if (isActivationExpired(context)) {
-            return "کد منقضی شده — نیاز به تمدید";
+        if (isActivationExpired(c)) {
+            return effectiveNow(c) >= s.expiresAt
+                    ? "اشتراک منقضی شده — نیاز به تمدید"
+                    : "برای ادامه یک‌بار به اینترنت وصل شوید";
         }
         return "نیاز به فعال‌سازی";
     }
 
-    public void syncWithServer(Context context) {}
-    public void verifyPaymentOnServer(Context context, String authority, String type) {}
-
-    @Deprecated
-    public boolean isActivated(Context context) {
-        return hasAccess(context);
+    // ─── عملیات شبکه (blocking) ───
+    /** 0 موفق · 3 خطای شبکه/سرور · 7 نیاز به ورود */
+    public int refreshStatus(Context c) {
+        String token = getToken(c);
+        if (token == null) return 7;
+        try {
+            JSONObject b = new JSONObject();
+            b.put("app_version", BuildConfig.VERSION_NAME);
+            b.put("device_model", (Build.MANUFACTURER + " " + Build.MODEL).trim());
+            JSONObject r = RaidoCloud.post("status", b, token);
+            int http = r.optInt("_http");
+            if (http == 401) { logout(c); return 7; }
+            if (http == 200 && saveStatus(c, r.optString("payload"), r.optString("sig"))) return 0;
+            return 3;
+        } catch (Throwable t) {
+            return 3;
+        }
     }
 
-    @Deprecated
-    public void setActivated(Context context, boolean z) {}
-
-    @Deprecated
-    public boolean validateCode(Context context, String str) {
-        return activateWithCode(context, str) == 0;
+    /** 0 موفق · 4 قبلاً مصرف شده · 9 قبلاً تست گرفته شده · 3 خطا · 7 نیاز به ورود */
+    public int startTrial(Context c) {
+        String token = getToken(c);
+        if (token == null) return 7;
+        try {
+            JSONObject r = RaidoCloud.post("start-trial", new JSONObject(), token);
+            int http = r.optInt("_http");
+            if (http == 401) { logout(c); return 7; }
+            if (r.optBoolean("ok") && saveStatus(c, r.optString("payload"), r.optString("sig"))) return 0;
+            String e = r.optString("error");
+            if ("trial_used".equals(e)) return 9;
+            if ("already_active".equals(e)) return 0;
+            return 3;
+        } catch (Throwable t) {
+            return 3;
+        }
     }
 
-    @Deprecated
-    public String getDeviceCode(Context context) {
-        return getDeviceFingerprint(context);
+    /**
+     * 0 موفق · 1 کد نامعتبر · 4 قبلاً مصرف شده · 5 منقضی · 8 تلاش زیاد · 3 خطا · 7 نیاز به ورود
+     */
+    public int activateWithCode(Context c, String rawCode) {
+        String token = getToken(c);
+        if (token == null) return 7;
+        try {
+            JSONObject b = new JSONObject();
+            b.put("code", rawCode == null ? "" : rawCode);
+            JSONObject r = RaidoCloud.post("redeem-code", b, token);
+            int http = r.optInt("_http");
+            if (http == 401) { logout(c); return 7; }
+            if (http == 429) return 8;
+            if (r.optBoolean("ok")) {
+                return saveStatus(c, r.optString("payload"), r.optString("sig")) ? 0 : 3;
+            }
+            String e = r.optString("error");
+            if ("used".equals(e)) return 4;
+            if ("expired".equals(e)) return 5;
+            if ("invalid".equals(e)) return 1;
+            return 3;
+        } catch (Throwable t) {
+            return 3;
+        }
     }
 }

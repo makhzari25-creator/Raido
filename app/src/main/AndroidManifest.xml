@@ -35,6 +35,7 @@
         <activity android:name=".TripEditActivity" android:exported="false"/>
         <activity android:name=".TextTestActivity" android:exported="false"/>
         <activity android:name=".PrivacyActivity" android:exported="false"/>
+        <activity android:name=".LoginActivity" android:exported="false"/>
         <activity android:name=".ActivationActivity" android:exported="false"/>
         <activity android:name=".SubscriptionActivity" android:exported="false"/>
         <activity
