@@ -1,11 +1,6 @@
 package ir.tripanalyzer.app;
 
 import android.content.Context;
-import android.net.Uri;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import org.json.JSONObject;
 
 /**
@@ -60,20 +55,6 @@ public final class NeshanClient {
 
     private NeshanClient() {}
 
-    static String apiKey() {
-        String real = "service.071a7f18b6224ab7a45e64076c4483f6";
-        StringBuilder obf = new StringBuilder();
-        for (int i = 0; i < real.length(); i++) {
-            obf.append((char) (real.charAt(i) ^ 0x5A));
-        }
-        String stored = obf.toString();
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < stored.length(); i++) {
-            out.append((char) (stored.charAt(i) ^ 0x5A));
-        }
-        return out.toString();
-    }
-
     /** سازگاری با کد قبلی — فقط نقطه یا null */
     public GeoPoint geocode(Context ctx, String address) {
         return geocodeDetailed(ctx, address).toPoint();
@@ -85,48 +66,42 @@ public final class NeshanClient {
      * Header: Api-Key: ...
      */
     public GeocodeResult geocodeDetailed(Context ctx, String address) {
-        final String endpoint = "https://api.neshan.org/v4/geocoding";
+        final String endpoint = "raido-cloud/geocode";
         if (address == null || address.trim().length() < 4) {
             return GeocodeResult.skip("آدرس کوتاه/خالی");
         }
         if (ctx != null && !LicenseStore.INSTANCE.isPremium(ctx)) {
             return GeocodeResult.skip("غیرپرمیوم");
         }
-        String urlStr = endpoint + "?address=" + Uri.encode(address.trim());
-        HttpURLConnection conn = null;
+        // کلید نشان فقط روی سرور است؛ اپ از طریق Edge Function «geocode» درخواست می‌دهد.
+        if (ctx == null) return GeocodeResult.skip("بدون context");
+        String token = LicenseStore.INSTANCE.getToken(ctx);
+        if (token == null) return GeocodeResult.skip("ورود لازم است");
         try {
-            conn = (HttpURLConnection) new URL(urlStr).openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Api-Key", apiKey());
-            conn.setConnectTimeout(6000);
-            conn.setReadTimeout(8000);
-            int code;
+            JSONObject req = new JSONObject().put("address", address.trim());
+            JSONObject r;
             try {
-                code = conn.getResponseCode();
+                r = RaidoCloud.post("geocode", req, token);
             } catch (Throwable net) {
                 return new GeocodeResult(true, false, 0, null, null, null,
-                        "شبکه/اتصال به نشان برقرار نشد", endpoint);
+                        "شبکه/اتصال به سرور برقرار نشد", endpoint);
+            }
+            int code = r.optInt("_http");
+            if (code == 401) {
+                LicenseStore.INSTANCE.refreshStatus(ctx); // خروج اجباری + ثبت دلیل
+                return new GeocodeResult(true, false, code, null, null, null, "نشست نامعتبر", endpoint);
             }
             if (code != 200) {
-                String errBody = readQuiet(conn);
+                String why = r.optString("error", "");
                 return new GeocodeResult(true, false, code, null, null, null,
-                        "HTTP " + code + (errBody != null && errBody.length() > 0
-                                ? (" · " + errBody.substring(0, Math.min(80, errBody.length())))
-                                : ""),
-                        endpoint);
+                        "HTTP " + code + (why.isEmpty() ? "" : " · " + why), endpoint);
             }
-            String body = readQuiet(conn);
-            if (body == null || body.isEmpty()) {
-                return new GeocodeResult(true, false, code, null, null, null,
-                        "پاسخ خالی از نشان", endpoint);
-            }
-            JSONObject json = new JSONObject(body);
-            String st = json.optString("status", "");
+            String st = r.optString("status", "");
             if (!"OK".equalsIgnoreCase(st)) {
                 return new GeocodeResult(true, false, code, st, null, null,
                         "status نشان: " + (st.isEmpty() ? "خالی" : st), endpoint);
             }
-            JSONObject loc = json.optJSONObject("location");
+            JSONObject loc = r.optJSONObject("location");
             if (loc == null) {
                 return new GeocodeResult(true, false, code, st, null, null,
                         "بدون location در پاسخ نشان", endpoint);
@@ -145,30 +120,6 @@ public final class NeshanClient {
             if (msg.length() > 80) msg = msg.substring(0, 80);
             return new GeocodeResult(true, false, 0, null, null, null,
                     "خطا: " + msg, endpoint);
-        } finally {
-            if (conn != null) {
-                try { conn.disconnect(); } catch (Throwable ignored) {}
-            }
-        }
-    }
-
-    private static String readQuiet(HttpURLConnection conn) {
-        try {
-            java.io.InputStream is;
-            try {
-                is = conn.getInputStream();
-            } catch (Throwable t) {
-                is = conn.getErrorStream();
-            }
-            if (is == null) return null;
-            BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line);
-            br.close();
-            return sb.toString();
-        } catch (Throwable t) {
-            return null;
         }
     }
 }

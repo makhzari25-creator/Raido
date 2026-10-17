@@ -44,6 +44,15 @@ public final class LoginActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         if (LicenseStore.INSTANCE.isLoggedIn(this)) { goMain(); return; }
         buildUi();
+        String why = LicenseStore.INSTANCE.consumeLogoutReason(this);
+        if (!why.isEmpty() && statusTv != null) {
+            switch (why) {
+                case "other_device": statusTv.setText("با این شماره در دستگاه دیگری وارد شده‌اند؛ برای ادامه دوباره وارد شو."); break;
+                case "banned": statusTv.setText("این حساب مسدود شده است. با پشتیبانی تماس بگیر: " + LicenseStore.TELEGRAM_ID); break;
+                case "logout": break;
+                default: statusTv.setText("نشست منقضی شد؛ دوباره وارد شو."); break;
+            }
+        }
     }
 
     @Override
@@ -212,6 +221,11 @@ public final class LoginActivity extends BaseActivity {
                                 diag("signature/fp check failed");
                                 fail("خطای تأیید امنیتی؛ برنامه را به‌روز کن");
                             }
+                            return;
+                        }
+                        if ("banned".equals(st)) {
+                            getSharedPreferences(P, Context.MODE_PRIVATE).edit().clear().apply();
+                            fail("این حساب مسدود شده است. با پشتیبانی تماس بگیر: " + LicenseStore.TELEGRAM_ID);
                             return;
                         }
                         if ("expired".equals(st)) {

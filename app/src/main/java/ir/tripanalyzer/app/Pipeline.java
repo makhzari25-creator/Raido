@@ -229,6 +229,8 @@ public final class Pipeline {
                         }
                     } catch (Throwable ignored) {}
                     ReportAutoSave.INSTANCE.markPending(applicationContext);
+                    // همگام‌سازی کم‌هزینه و محدودشده (فقط وقتی موعدش رسیده باشد؛ روی ترد جدا)
+                    try { CloudSync.syncIfDue(applicationContext); } catch (Throwable ignored) {}
 
                     try {
                         if (isFresh) {

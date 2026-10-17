@@ -32,7 +32,16 @@ final class UsageCounter {
     }
 
     static void onAnalysis(Context c) { inc(c, "a_"); }
-    static void onAccepted(Context c) { inc(c, "c_"); }
+    /** هر سفر فقط یک‌بار شمرده می‌شود (حتی اگر چند مسیر markAccepted را صدا بزنند). */
+    static void onAccepted(Context c, long ts) {
+        try {
+            SharedPreferences sp = p(c);
+            String k = "k_" + ts;
+            if (sp.contains(k)) return;
+            String ck = "c_" + today();
+            sp.edit().putLong(k, System.currentTimeMillis()).putInt(ck, sp.getInt(ck, 0) + 1).apply();
+        } catch (Throwable ignored) {}
+    }
 
     /** آمار ۴ روز اخیر برای ارسال (سرور بیشینه را نگه می‌دارد، پس تکراری بی‌ضرر است). */
     static JSONArray recentDays(Context c) {
@@ -49,9 +58,15 @@ final class UsageCounter {
             // پاکسازی ورودی‌های قدیمی‌تر از ۱۰ روز
             String cutoff = now.minusDays(10).toString();
             SharedPreferences.Editor ed = sp.edit();
+            long oldMs = System.currentTimeMillis() - 10L * 24 * 3600 * 1000;
             for (Map.Entry<String, ?> e : sp.getAll().entrySet()) {
                 String k = e.getKey();
-                if (k.length() > 2 && k.substring(2).compareTo(cutoff) < 0) ed.remove(k);
+                if (k.startsWith("k_")) {
+                    Object v = e.getValue();
+                    if (v instanceof Long && (Long) v < oldMs) ed.remove(k);
+                } else if (k.length() > 2 && k.substring(2).compareTo(cutoff) < 0) {
+                    ed.remove(k);
+                }
             }
             ed.apply();
         } catch (Throwable ignored) {}

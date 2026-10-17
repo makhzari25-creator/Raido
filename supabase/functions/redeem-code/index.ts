@@ -1,9 +1,9 @@
-import { authenticate, db, json, preflight, readJson, sha256Hex, signedStatus } from "../_shared/util.ts";
+import { authenticate, db, json, preflight, readJson, sha256Hex, signedStatus, deny } from "../_shared/util.ts";
 
 Deno.serve(async (req) => {
   const pre = preflight(req); if (pre) return pre;
   const auth = await authenticate(req);
-  if (!auth) return json({ error: "unauthorized" }, 401);
+  if (!auth) return await deny(req);
   const body = await readJson(req);
   const code = String(body.code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (code.length !== 12) return json({ ok: false, error: "invalid" });

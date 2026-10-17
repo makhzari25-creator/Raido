@@ -82,7 +82,11 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
     // شماره یونیک است؛ کاربر موجود دوباره استفاده می‌شود
-    const { data: existing } = await db.from("users").select("id").eq("phone", phone).maybeSingle();
+    const { data: existing } = await db.from("users").select("id, banned").eq("phone", phone).maybeSingle();
+    if (existing?.banned) {
+      await say(chat, "این حساب مسدود شده است. برای پیگیری با پشتیبانی تماس بگیرید: @TripAnalyzerSupport", { reply_markup: { remove_keyboard: true } });
+      return json({ ok: true });
+    }
     let userId = existing?.id as string | undefined;
     if (userId) {
       await db.from("users").update({ telegram_id: fromId }).eq("id", userId);

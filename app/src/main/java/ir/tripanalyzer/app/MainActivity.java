@@ -103,6 +103,15 @@ public final class MainActivity extends BaseActivity {
     @Override // android.app.Activity
     protected void onResume() {
         super.onResume();
+        // اگر نشست سمت سرور بسته شده (دستگاه دیگر / مسدود / خروج) → صفحهٔ ورود
+        try {
+            if (!LicenseStore.INSTANCE.isLoggedIn(this)) {
+                startActivity(new Intent(this, (Class<?>) LoginActivity.class));
+                finish();
+                return;
+            }
+            CloudSync.syncIfDue(this);
+        } catch (Throwable ignored) {}
         try { if (tipCard != null) scheduleTipCollapse(); } catch (Throwable ignored) {}
         try {
             if (Store.INSTANCE.isOnboardingDone(this)

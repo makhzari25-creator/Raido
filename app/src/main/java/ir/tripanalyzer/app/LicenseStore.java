@@ -89,6 +89,33 @@ public final class LicenseStore {
         memPayload = null; memSig = null; memStatus = null;
     }
 
+    private static final String NOTE_PREFS = "raido_logout_note";
+
+    /** خروج دستی: اول نشست سرور باطل می‌شود (در صورت نبود اینترنت فقط محلی). blocking. */
+    public void logoutRemote(Context c) {
+        String t = getToken(c);
+        if (t != null) {
+            try { RaidoCloud.post("logout", null, t); } catch (Throwable ignored) {}
+        }
+        logout(c);
+    }
+
+    /** پاسخ 401 سرور: دلیل را برای نمایش در صفحهٔ ورود نگه می‌دارد و خارج می‌کند. */
+    private void onUnauthorized(Context c, JSONObject r) {
+        String reason = r == null ? "" : r.optString("reason", "");
+        c.getApplicationContext().getSharedPreferences(NOTE_PREFS, Context.MODE_PRIVATE)
+                .edit().putString("reason", reason).apply();
+        logout(c);
+    }
+
+    /** دلیل آخرین خروج اجباری (یک‌بار مصرف) یا "". */
+    public String consumeLogoutReason(Context c) {
+        SharedPreferences sp = c.getApplicationContext().getSharedPreferences(NOTE_PREFS, Context.MODE_PRIVATE);
+        String r = sp.getString("reason", "");
+        if (!r.isEmpty()) sp.edit().clear().apply();
+        return r;
+    }
+
     /** ذخیرهٔ ورود موفق (توکن + وضعیت امضاشده). */
     public boolean saveLogin(Context c, String token, String payload, String sig) {
         if (token == null || token.length() < 32) return false;
@@ -256,7 +283,7 @@ public final class LicenseStore {
             b.put("device_model", (Build.MANUFACTURER + " " + Build.MODEL).trim());
             JSONObject r = RaidoCloud.post("status", b, token);
             int http = r.optInt("_http");
-            if (http == 401) { logout(c); return 7; }
+            if (http == 401) { onUnauthorized(c, r); return 7; }
             if (http == 200 && saveStatus(c, r.optString("payload"), r.optString("sig"))) return 0;
             return 3;
         } catch (Throwable t) {
@@ -271,7 +298,7 @@ public final class LicenseStore {
         try {
             JSONObject r = RaidoCloud.post("start-trial", new JSONObject(), token);
             int http = r.optInt("_http");
-            if (http == 401) { logout(c); return 7; }
+            if (http == 401) { onUnauthorized(c, r); return 7; }
             if (r.optBoolean("ok") && saveStatus(c, r.optString("payload"), r.optString("sig"))) return 0;
             String e = r.optString("error");
             if ("trial_used".equals(e)) return 9;
@@ -293,7 +320,7 @@ public final class LicenseStore {
             b.put("code", rawCode == null ? "" : rawCode);
             JSONObject r = RaidoCloud.post("redeem-code", b, token);
             int http = r.optInt("_http");
-            if (http == 401) { logout(c); return 7; }
+            if (http == 401) { onUnauthorized(c, r); return 7; }
             if (http == 429) return 8;
             if (r.optBoolean("ok")) {
                 return saveStatus(c, r.optString("payload"), r.optString("sig")) ? 0 : 3;

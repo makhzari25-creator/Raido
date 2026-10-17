@@ -16,6 +16,13 @@ Deno.serve(async (req) => {
     }
     if (ls.status !== "verified" || !ls.user_id) return json({ status: "expired" });
 
+    // کاربر مسدود وارد نمی‌شود
+    const { data: usr } = await db.from("users").select("banned").eq("id", ls.user_id).maybeSingle();
+    if (usr?.banned) {
+      await db.from("login_sessions").update({ status: "consumed" }).eq("code", code);
+      return json({ status: "banned" });
+    }
+
     // اول همهٔ کارهای بدون اثرجانبی (تا خطا باعث مصرف شدن نشست نشود)
     await db.from("subscriptions").upsert({ user_id: ls.user_id }, { onConflict: "user_id", ignoreDuplicates: true });
     const signed = await signedStatus(ls.user_id, fp);
@@ -27,7 +34,7 @@ Deno.serve(async (req) => {
 
     const token = randomHex(32);
     // هر کاربر فقط یک دستگاه فعال: نشست‌های قبلی باطل می‌شوند
-    await db.from("sessions").delete().eq("user_id", ls.user_id);
+    await db.rpc("end_other_sessions", { p_user: ls.user_id });
     const ins = await db.from("sessions").insert({ token_hash: await sha256Hex(token), user_id: ls.user_id, device_fp: fp });
     if (ins.error) throw new Error("session insert: " + ins.error.message);
     await db.from("users").update({ last_seen: new Date().toISOString() }).eq("id", ls.user_id);

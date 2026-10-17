@@ -1,9 +1,9 @@
-import { authenticate, db, json, preflight, readJson, signedStatus } from "../_shared/util.ts";
+import { authenticate, db, json, preflight, readJson, signedStatus, deny } from "../_shared/util.ts";
 
 Deno.serve(async (req) => {
   const pre = preflight(req); if (pre) return pre;
   const auth = await authenticate(req);
-  if (!auth) return json({ error: "unauthorized" }, 401);
+  if (!auth) return await deny(req);
   const body = await readJson(req);
   const upd: Record<string, unknown> = { last_seen: new Date().toISOString() };
   if (typeof body.app_version === "string") upd.app_version = body.app_version.slice(0, 20);

@@ -2,10 +2,26 @@ import { db, json, preflight, readJson, randomCode, sha256Hex, safeEqual, PLANS 
 
 const ADMIN_KEY = Deno.env.get("ADMIN_KEY") ?? "";
 
+const MAX_FAILS = 8;           // تلاش ناموفق مجاز
+const WINDOW_MS = 15 * 60_000; // در این بازه (۱۵ دقیقه)
+
+function clientIp(req: Request): string {
+  const f = req.headers.get("x-forwarded-for") ?? req.headers.get("cf-connecting-ip") ?? "";
+  return (f.split(",")[0] || "unknown").trim().slice(0, 64) || "unknown";
+}
+
 Deno.serve(async (req) => {
   const pre = preflight(req); if (pre) return pre;
+  const ip = clientIp(req);
+  const since = new Date(Date.now() - WINDOW_MS).toISOString();
+  const { count: fails } = await db.from("admin_fail").select("id", { count: "exact", head: true }).eq("ip", ip).gt("at", since);
+  if ((fails ?? 0) >= MAX_FAILS) return json({ error: "locked" }, 429);
+
   const key = req.headers.get("x-admin-key") ?? "";
-  if (!ADMIN_KEY || ADMIN_KEY.length < 12 || !safeEqual(key, ADMIN_KEY)) return json({ error: "forbidden" }, 403);
+  if (!ADMIN_KEY || ADMIN_KEY.length < 12 || !safeEqual(key, ADMIN_KEY)) {
+    await db.from("admin_fail").insert({ ip });
+    return json({ error: "forbidden" }, 403);
+  }
   const body = await readJson(req);
   const action = String(body.action ?? "");
 
@@ -39,7 +55,7 @@ Deno.serve(async (req) => {
 
   if (action === "users") {
     const q = String(body.q ?? "").replace(/\D/g, "");
-    let query = db.from("users").select("id, phone, created_at, last_seen, app_version, device_model, subscriptions(plan,is_premium,expires_at,trial_used)")
+    let query = db.from("users").select("id, phone, created_at, last_seen, app_version, device_model, banned, ban_reason, subscriptions(plan,is_premium,expires_at,trial_used)")
       .order("created_at", { ascending: false }).limit(50);
     if (q) query = query.like("phone", `%${q}%`);
     const { data, error } = await query;
@@ -56,6 +72,22 @@ Deno.serve(async (req) => {
     if (!u) return json({ error: "user_not_found" }, 404);
     const { error } = await db.rpc("apply_plan", { p_user: u.id, p_plan: plan, p_days: p.days, p_premium: p.premium });
     if (error) return json({ error: "server" }, 500);
+    return json({ ok: true });
+  }
+
+  if (action === "ban" || action === "unban" || action === "revoke") {
+    const phone = String(body.phone ?? "");
+    if (!/^09\d{9}$/.test(phone)) return json({ error: "bad_request" }, 400);
+    const { data: u } = await db.from("users").select("id").eq("phone", phone).maybeSingle();
+    if (!u) return json({ error: "user_not_found" }, 404);
+    if (action === "revoke") {
+      const { error } = await db.rpc("revoke_plan", { p_user: u.id });
+      if (error) return json({ error: "server" }, 500);
+    } else {
+      const reason = typeof body.reason === "string" ? body.reason.slice(0, 200) : "";
+      const { error } = await db.rpc("set_ban", { p_user: u.id, p_banned: action === "ban", p_reason: reason });
+      if (error) return json({ error: "server" }, 500);
+    }
     return json({ ok: true });
   }
 

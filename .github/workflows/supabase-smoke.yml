@@ -39,6 +39,9 @@ jobs:
           check "redeem without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/redeem-code" -H 'Content-Type: application/json' -d '{"code":"AAAABBBBCCCC"}')"
           check "start-trial without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/start-trial" -H 'Content-Type: application/json' -d '{}')"
           check "usage-report without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/usage-report" -H 'Content-Type: application/json' -d '{}')"
+          check "logout without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/logout" -H 'Content-Type: application/json' -d '{}')"
+          check "geocode without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/geocode" -H 'Content-Type: application/json' -d '{"address":"تهران میدان آزادی"}')"
+          check "401 carries reason" invalid "$(curl -s -X POST "$BASE/status" -H 'Content-Type: application/json' -d '{}' | python3 -c "import sys,json;print(json.load(sys.stdin).get('reason'))")"
           check "telegram-webhook without secret" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/telegram-webhook" -H 'Content-Type: application/json' -d '{}')"
           check "admin wrong key" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/admin" -H 'Content-Type: application/json' -H 'x-admin-key: wrong-wrong-wrong-key' -d '{"action":"stats"}')"
 

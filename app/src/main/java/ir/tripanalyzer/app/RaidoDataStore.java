@@ -139,7 +139,7 @@ public final class RaidoDataStore {
 
     public void markAccepted(Context c, long ts) {
         if (c == null || ts <= 0) return;
-        UsageCounter.onAccepted(c);
+        UsageCounter.onAccepted(c, ts);
         try {
             JSONObject root = readRoot(c);
             JSONArray arr = root.optJSONArray("analyses");

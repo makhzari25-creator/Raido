@@ -84,9 +84,23 @@
     </section>
 
     <section class="card">
+      <h2>مسدودسازی و لغو اشتراک</h2>
+      <label>شماره موبایل (۰۹…)</label>
+      <input id="bPhone" dir="ltr" inputmode="numeric" maxlength="11" placeholder="09123456789">
+      <label>دلیل (اختیاری)</label>
+      <input id="bReason" maxlength="200">
+      <div class="row" style="margin-top:12px">
+        <button id="doBan" style="background:var(--bad)">مسدود کن</button>
+        <button id="doUnban" class="ghost">آزاد کن</button>
+        <button id="doRevoke" class="ghost">لغو اشتراک</button>
+      </div>
+      <div class="msg" id="bMsg"></div>
+    </section>
+
+    <section class="card">
       <h2>کاربران</h2>
       <div class="row"><input id="q" dir="ltr" inputmode="numeric" placeholder="جستجوی شماره…"><button class="ghost" id="search" style="flex:0 0 auto">جستجو</button></div>
-      <div class="scroll"><table id="users"><thead><tr><th>شماره</th><th>پلن</th><th>انقضا</th><th>آخرین فعالیت</th></tr></thead><tbody></tbody></table></div>
+      <div class="scroll"><table id="users"><thead><tr><th>شماره</th><th>پلن</th><th>انقضا</th><th>آخرین فعالیت</th><th>وضعیت</th></tr></thead><tbody></tbody></table></div>
     </section>
   </div>
 </main>
@@ -109,7 +123,7 @@ const dt = (s) => s ? new Date(s).toLocaleString("fa-IR", { dateStyle: "short", 
 async function loadStats() {
   const s = await call({ action: "stats" });
   const items = [["کل کاربران", s.users_total], ["جدید امروز", s.new_today], ["فعال ۲۴ساعت", s.active_1d], ["فعال ۷روز", s.active_7d], ["فعال ۳۰روز", s.active_30d],
-    ["پرمیوم فعال", s.premium_active], ["اشتراک پولی فعال", s.paid_active], ["تست فعال", s.trial_active], ["تحلیل ۷روز", s.analyses_7d], ["پذیرفته ۷روز", s.accepted_7d], ["کد مصرف‌نشده", s.codes_unused]];
+    ["پرمیوم فعال", s.premium_active], ["اشتراک پولی فعال", s.paid_active], ["تست فعال", s.trial_active], ["تحلیل ۷روز", s.analyses_7d], ["پذیرفته ۷روز", s.accepted_7d], ["کد مصرف‌نشده", s.codes_unused], ["مسدود", s.banned]];
   $("stats").innerHTML = items.map(([l, v]) => `<div class="stat"><b>${fa(v)}</b><span>${l}</span></div>`).join("");
   const v = s.versions || {};
   $("versions").textContent = "نسخه‌ها: " + (Object.keys(v).map((k) => `${k}: ${fa(v[k])}`).join(" · ") || "—");
@@ -120,8 +134,8 @@ async function loadUsers() {
     const sub = Array.isArray(u.subscriptions) ? u.subscriptions[0] : u.subscriptions;
     const exp = sub && sub.expires_at ? new Date(sub.expires_at) : null;
     const active = exp && exp > new Date();
-    return `<tr><td dir="ltr">${u.phone}</td><td><span class="tag ${sub && sub.is_premium ? "p" : ""}">${PLAN_FA[sub ? sub.plan : "NONE"] || "—"}</span></td><td>${active ? dt(sub.expires_at) : "<span class=err>منقضی/ندارد</span>"}</td><td>${dt(u.last_seen)}</td></tr>`;
-  }).join("") || `<tr><td colspan="4">کاربری یافت نشد</td></tr>`;
+    return `<tr><td dir="ltr">${u.phone}</td><td><span class="tag ${sub && sub.is_premium ? "p" : ""}">${PLAN_FA[sub ? sub.plan : "NONE"] || "—"}</span></td><td>${active ? dt(sub.expires_at) : "<span class=err>منقضی/ندارد</span>"}</td><td>${dt(u.last_seen)}</td><td>${u.banned ? "<span class=err>مسدود</span>" : "—"}</td></tr>`;
+  }).join("") || `<tr><td colspan="5">کاربری یافت نشد</td></tr>`;
 }
 async function enter() {
   $("loginCard").hidden = true; $("app").hidden = false;
@@ -130,7 +144,7 @@ async function enter() {
 $("loginBtn").onclick = async () => {
   KEY = $("key").value.trim(); $("loginMsg").textContent = "";
   try { await call({ action: "stats" }); try { sessionStorage.setItem("raido_admin", KEY); } catch (e) {} await enter(); }
-  catch (e) { $("loginMsg").className = "msg err"; $("loginMsg").textContent = e.message === "forbidden" ? "رمز اشتباه است" : "خطا: " + e.message; }
+  catch (e) { $("loginMsg").className = "msg err"; $("loginMsg").textContent = e.message === "forbidden" ? "رمز اشتباه است" : e.message === "locked" ? "تلاش زیاد؛ ۱۵ دقیقه بعد دوباره امتحان کن" : "خطا: " + e.message; }
 };
 $("refresh").onclick = () => Promise.all([loadStats(), loadUsers()]).catch((e) => alert(e.message));
 $("search").onclick = () => loadUsers().catch((e) => alert(e.message));
@@ -151,6 +165,17 @@ $("grant").onclick = async () => {
     $("gMsg").className = "msg ok"; $("gMsg").textContent = "اشتراک اعمال شد."; loadUsers(); loadStats();
   } catch (e) { $("gMsg").className = "msg err"; $("gMsg").textContent = e.message === "user_not_found" ? "کاربری با این شماره پیدا نشد (باید یک‌بار وارد اپ شده باشد)" : "خطا: " + e.message; }
 };
+function bMsg(ok, t) { $("bMsg").className = "msg " + (ok ? "ok" : "err"); $("bMsg").textContent = t; }
+async function adminAct(action, okText, confirmText) {
+  const phone = $("bPhone").value.trim();
+  if (!/^09\d{9}$/.test(phone)) return bMsg(false, "شماره معتبر نیست");
+  if (confirmText && !confirm(confirmText + "\n" + phone)) return;
+  try { await call({ action, phone, reason: $("bReason").value }); bMsg(true, okText); loadUsers(); loadStats(); }
+  catch (e) { bMsg(false, e.message === "user_not_found" ? "کاربری با این شماره پیدا نشد" : "خطا: " + e.message); }
+}
+$("doBan").onclick = () => adminAct("ban", "کاربر مسدود شد و همهٔ نشست‌هایش بسته شد.", "این کاربر مسدود شود؟");
+$("doUnban").onclick = () => adminAct("unban", "کاربر آزاد شد (باید دوباره وارد شود).");
+$("doRevoke").onclick = () => adminAct("revoke", "اشتراک لغو شد؛ در اولین همگام‌سازی اپ اعمال می‌شود.", "اشتراک این کاربر لغو شود؟");
 if (KEY) enter().catch(() => { $("loginCard").hidden = false; $("app").hidden = true; });
 </script>
 </body>

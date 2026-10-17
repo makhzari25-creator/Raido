@@ -145,9 +145,36 @@ public final class SubscriptionActivity extends BaseActivity {
         });
         root.addView(actLink);
 
+        addSpace(root, 28);
+        TextView outLink = new TextView(this);
+        outLink.setText("خروج از حساب");
+        outLink.setTextSize(14f);
+        outLink.setTextColor(Color.parseColor("#DC2626"));
+        outLink.setGravity(Gravity.CENTER);
+        outLink.setPadding(0, dp(10), 0, dp(10));
+        outLink.setOnClickListener(v -> confirmLogout());
+        if (LicenseStore.INSTANCE.isLoggedIn(this)) root.addView(outLink);
+
         scroll.addView(root);
         setContentView(scroll);
         try { Fonts.INSTANCE.applyRecursive(root); } catch (Exception ignored) {}
+    }
+
+    private void confirmLogout() {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("خروج از حساب")
+                .setMessage("از این دستگاه خارج می‌شوی. بعداً می‌توانی دوباره با تلگرام وارد شوی.")
+                .setNegativeButton("انصراف", null)
+                .setPositiveButton("خروج", (d, w) -> new Thread(() -> {
+                    LicenseStore.INSTANCE.logoutRemote(SubscriptionActivity.this);
+                    runOnUiThread(() -> {
+                        Intent i = new Intent(SubscriptionActivity.this, LoginActivity.class);
+                        i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                        finish();
+                    });
+                }, "raido-logout").start())
+                .show();
     }
 
     private LinearLayout planCard(String title, String price, String desc, final String tgMessage) {

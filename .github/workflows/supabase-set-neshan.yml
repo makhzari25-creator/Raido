@@ -1,0 +1,40 @@
+name: Set Neshan Key (یک‌بار)
+
+# کلید نشان را به‌عنوان secret سرور (Supabase) ست می‌کند تا از APK حذف شود.
+# منبع کلید: Secret گیت‌هاب NESHAN_KEY (اگر ساخته باشید)، وگرنه همان کلیدی که قبلاً در کد بود (کامیت 80c2650).
+on:
+  workflow_dispatch:
+
+env:
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  PROJECT_REF: atzyjiljtzxhctblziti
+
+jobs:
+  set-key:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Set NESHAN_KEY on Supabase
+        env:
+          NESHAN_SECRET: ${{ secrets.NESHAN_KEY }}
+        run: |
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || { echo "::error::Secret SUPABASE_ACCESS_TOKEN is missing"; exit 1; }
+          KEY="$NESHAN_SECRET"
+          if [ -z "$KEY" ]; then
+            KEY=$(git show 80c2650:app/src/main/java/ir/tripanalyzer/app/NeshanClient.java | grep -o 'service\.[0-9a-f]\{32\}' | head -1 || true)
+            echo "source: previous commit"
+          else
+            echo "source: GitHub secret NESHAN_KEY"
+          fi
+          [ -n "$KEY" ] || { echo "::error::Neshan key not found"; exit 1; }
+          echo "::add-mask::$KEY"
+          printf 'NESHAN_KEY=%s\n' "$KEY" > n.env
+          supabase secrets set --env-file n.env --project-ref "$PROJECT_REF"
+          rm -f n.env
+          echo "NESHAN_KEY set (length ${#KEY})"

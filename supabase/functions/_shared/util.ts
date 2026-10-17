@@ -61,17 +61,38 @@ export const PLANS: Record<string, { days: number; premium: boolean }> = {
 
 export const OFFLINE_GRACE_MS = 10 * 24 * 3600 * 1000;
 
-export type Auth = { userId: string; deviceFp: string };
+export type Auth = { userId: string; deviceFp: string; tokenHash: string };
 
-/** احراز هویت با توکن دستگاه (هدر x-raido-token). */
+/** احراز هویت با توکن دستگاه (هدر x-raido-token). کاربر مسدود همیشه رد می‌شود. */
 export async function authenticate(req: Request): Promise<Auth | null> {
   const token = req.headers.get("x-raido-token") ?? "";
   if (token.length < 32 || token.length > 128) return null;
   const hash = await sha256Hex(token);
-  const { data } = await db.from("sessions").select("user_id, device_fp").eq("token_hash", hash).maybeSingle();
+  const { data } = await db.from("sessions").select("user_id, device_fp, users(banned)").eq("token_hash", hash).maybeSingle();
   if (!data) return null;
+  const u: any = Array.isArray((data as any).users) ? (data as any).users[0] : (data as any).users;
+  if (u?.banned) return null;
   db.from("sessions").update({ last_used: new Date().toISOString() }).eq("token_hash", hash).then(() => {});
-  return { userId: data.user_id, deviceFp: data.device_fp };
+  return { userId: data.user_id, deviceFp: data.device_fp, tokenHash: hash };
+}
+
+/** پاسخ 401 همراه با دلیل (other_device / banned / logout / invalid) تا اپ پیام درست نشان دهد. */
+export async function deny(req: Request): Promise<Response> {
+  let reason = "invalid";
+  try {
+    const token = req.headers.get("x-raido-token") ?? "";
+    if (token.length >= 32 && token.length <= 128) {
+      const hash = await sha256Hex(token);
+      const { data: e } = await db.from("ended_sessions").select("reason").eq("token_hash", hash).maybeSingle();
+      if (e?.reason) reason = e.reason;
+      else {
+        const { data: s } = await db.from("sessions").select("users(banned)").eq("token_hash", hash).maybeSingle();
+        const u: any = Array.isArray((s as any)?.users) ? (s as any).users[0] : (s as any)?.users;
+        if (u?.banned) reason = "banned";
+      }
+    }
+  } catch { /* ignore */ }
+  return json({ error: "unauthorized", reason }, 401);
 }
 
 function b64(buf: ArrayBuffer): string {
