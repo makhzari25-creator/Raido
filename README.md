@@ -20,3 +20,10 @@
 Secrets: `RAIDO_KEYSTORE_BASE64`, `RAIDO_KEYSTORE_PASSWORD`, `RAIDO_KEY_ALIAS`, `RAIDO_KEY_PASSWORD`
 
 > نقشه `.mbtiles` داخل APK نیست؛ پرمیوم آپلود می‌کند.
+
+## بک‌اند (Supabase)
+- ورود با ربات تلگرام (شمارهٔ یونیک) · لایسنس و تست ۷ روزه سمت سرور · آمار استفاده.
+- کد سرور: `supabase/` (migration + Edge Functions). Deploy خودکار با `Supabase Deploy`.
+- راه‌اندازی اولیه: Secrets (`SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `ADMIN_KEY`) ← Deploy ← Bootstrap ← Smoke Test.
+- پنل ادمین: پوشهٔ `admin/` (روی GitHub Pages).
+- هیچ کلید یا الگوریتم تولید کدی داخل APK نیست؛ وضعیت اشتراک با RSA امضا و در اپ با کلید عمومی تأیید می‌شود.

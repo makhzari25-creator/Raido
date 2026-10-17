@@ -1,0 +1,49 @@
+name: Supabase Smoke Test
+
+# بعد از Deploy و Bootstrap اجرا کنید تا سلامت بک‌اند بدون دخالت دستی چک شود.
+on:
+  workflow_dispatch:
+
+env:
+  BASE: https://atzyjiljtzxhctblziti.supabase.co/functions/v1
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Smoke tests
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          fail=0
+          check() { # name expected actual
+            if [ "$2" = "$3" ]; then echo "PASS  $1 ($3)"; else echo "FAIL  $1 expected=$2 got=$3"; fail=1; fi
+          }
+          FP=SMOKE$(openssl rand -hex 6 | tr a-f A-F)
+
+          code=$(curl -s -o start.json -w '%{http_code}' -X POST "$BASE/auth-start" -H 'Content-Type: application/json' -d "{\"device_fp\":\"$FP\"}")
+          check "auth-start" 200 "$code"
+          CODE=$(python3 -c "import json;print(json.load(open('start.json')).get('code',''))")
+          check "auth-start returns 16-char code" 16 "${#CODE}"
+
+          code=$(curl -s -o poll.json -w '%{http_code}' -X POST "$BASE/auth-poll" -H 'Content-Type: application/json' -d "{\"code\":\"$CODE\",\"device_fp\":\"$FP\"}")
+          check "auth-poll pending" 200 "$code"
+          check "auth-poll status" pending "$(python3 -c "import json;print(json.load(open('poll.json')).get('status'))")"
+
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/auth-poll" -H 'Content-Type: application/json' -d "{\"code\":\"$CODE\",\"device_fp\":\"WRONGFP123456\"}")
+          check "auth-poll wrong device" 200 "$code"
+          check "auth-poll wrong device is expired" expired "$(curl -s -X POST "$BASE/auth-poll" -H 'Content-Type: application/json' -d "{\"code\":\"$CODE\",\"device_fp\":\"WRONGFP123456\"}" | python3 -c "import sys,json;print(json.load(sys.stdin).get('status'))")"
+
+          check "status without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/status" -H 'Content-Type: application/json' -d '{}')"
+          check "redeem without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/redeem-code" -H 'Content-Type: application/json' -d '{"code":"AAAABBBBCCCC"}')"
+          check "start-trial without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/start-trial" -H 'Content-Type: application/json' -d '{}')"
+          check "usage-report without token" 401 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/usage-report" -H 'Content-Type: application/json' -d '{}')"
+          check "telegram-webhook without secret" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/telegram-webhook" -H 'Content-Type: application/json' -d '{}')"
+          check "admin wrong key" 403 "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/admin" -H 'Content-Type: application/json' -H 'x-admin-key: wrong-wrong-wrong-key' -d '{"action":"stats"}')"
+
+          if [ -n "$ADMIN_KEY" ]; then
+            check "admin stats (real key)" 200 "$(curl -s -o stats.json -w '%{http_code}' -X POST "$BASE/admin" -H 'Content-Type: application/json' -H "x-admin-key: $ADMIN_KEY" -d '{"action":"stats"}')"
+            python3 -c "import json;d=json.load(open('stats.json'));print({k:d[k] for k in ('users_total','active_7d','codes_unused')})"
+          fi
+          exit $fail
