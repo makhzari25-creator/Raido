@@ -23,7 +23,8 @@ final class RaidoCloud {
     /** کلید publishable (عمومی). */
     static final String APIKEY = "sb_publishable_uls5J9duWsSEDIUY5WmmRA_Ik5v1oNa";
     /** کلید عمومی RSA برای تأیید امضای وضعیت اشتراک (base64 از X.509 DER). */
-    static final String PUBLIC_KEY_B64 = "";
+    static final String PUBLIC_KEY_B64 =
+            "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvkAgJmKRqmgjCAcpAvRoNs7iCBLqTdU7Yo83kWw+X2K+LWGwF7ivZWF8ltIZKhWcpFnsXHaDB8YNToJmiRNMvzhjDf4g26orw1Wm6kNrfkafyTCHRuzDwv4nX0gp7mCswTmwag7f02qxX+Amu+ysD6Q8ZnNVEYZ8ZXKDYma12Ns8PSA9yeN1cQQdGENlOqg5afbX98TR6YskzHwqiRzYmX+ludy6rbwm00sr89vOxkgOTNlw9XN2Fa54ZTxXRY4Rm6HGaI8ejPIVQNprr885SXWyQ1veYTzkGQhngQ+F5E4cOLpKRxJVXCB3biKAbc2FVjLcECB+qpTBWZUk4CKxlwIDAQAB";
 
     private RaidoCloud() {}
 
