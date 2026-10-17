@@ -29,6 +29,7 @@ public final class LoginActivity extends BaseActivity {
     private static final long TTL_MS = 10 * 60 * 1000L;
 
     private TextView statusTv;
+    private TextView diagTv;
     private Button loginBtn;
     private final AtomicBoolean polling = new AtomicBoolean(false);
     private volatile boolean alive = true;
@@ -125,6 +126,12 @@ public final class LoginActivity extends BaseActivity {
         statusTv.setPadding(0, dp(12), 0, 0);
         card.addView(statusTv);
 
+        diagTv = tv("", 11f, 0xFF94A3B8, false);
+        diagTv.setGravity(Gravity.CENTER);
+        diagTv.setTextDirection(View.TEXT_DIRECTION_LTR);
+        diagTv.setPadding(0, dp(6), 0, 0);
+        card.addView(diagTv);
+
         body.addView(card);
 
         TextView note = tv("شمارهٔ تو فقط برای شناسایی اشتراک ذخیره می‌شود.\nتلگرام روی گوشی لازم است (در صورت فیلتر، با VPN).",
@@ -170,6 +177,10 @@ public final class LoginActivity extends BaseActivity {
         }, "raido-login").start();
     }
 
+    private void diag(final String t) {
+        runOnUiThread(() -> { if (diagTv != null) diagTv.setText(t); });
+    }
+
     private void fail(String msg) {
         runOnUiThread(() -> {
             if (statusTv != null) statusTv.setText(msg);
@@ -189,6 +200,8 @@ public final class LoginActivity extends BaseActivity {
                         JSONObject r = RaidoCloud.post("auth-poll",
                                 new JSONObject().put("code", code).put("device_fp", fp), null);
                         String st = r.optString("status");
+                        diag("HTTP " + r.optInt("_http") + " | " + (st.isEmpty() ? "-" : st)
+                                + (r.has("error") ? " | " + r.optString("error") : ""));
                         if ("ok".equals(st)) {
                             boolean saved = LicenseStore.INSTANCE.saveLogin(this,
                                     r.optString("token"), r.optString("payload"), r.optString("sig"));
@@ -196,6 +209,7 @@ public final class LoginActivity extends BaseActivity {
                             if (saved) {
                                 runOnUiThread(this::goMain);
                             } else {
+                                diag("signature/fp check failed");
                                 fail("خطای تأیید امنیتی؛ برنامه را به‌روز کن");
                             }
                             return;
@@ -205,8 +219,9 @@ public final class LoginActivity extends BaseActivity {
                             fail("درخواست منقضی شد؛ دوباره دکمهٔ ورود را بزن");
                             return;
                         }
-                    } catch (Throwable ignored) {
+                    } catch (Throwable ex) {
                         // خطای موقت شبکه: ادامه
+                        diag("net: " + ex.getClass().getSimpleName() + " " + String.valueOf(ex.getMessage()));
                     }
                 }
                 if (alive) {
