@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>پنل رایدو</title>
+<style>
+  :root{--bg:#f0fdfa;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--brand:#0f766e;--brand2:#14b8a6;--warn:#b45309;--bad:#b91c1c}
+  @media (prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#111a2e;--ink:#e6edf7;--muted:#94a3b8;--line:#22304a;--brand:#2dd4bf;--brand2:#14b8a6}}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 system-ui,Tahoma,sans-serif}
+  header{background:linear-gradient(135deg,#0b3d3a,#0f766e);color:#fff;padding:18px 16px}
+  header h1{margin:0;font-size:20px} header p{margin:2px 0 0;opacity:.8;font-size:13px}
+  main{max-width:760px;margin:0 auto;padding:14px 16px 40px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
+  h2{margin:0 0 10px;font-size:16px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit}
+  input[dir=ltr]{text-align:left}
+  button{padding:11px 16px;border:0;border-radius:12px;background:var(--brand);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+  button.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
+  button:disabled{opacity:.5} .row{display:flex;gap:8px} .row>*{flex:1}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  @media(min-width:560px){.grid{grid-template-columns:repeat(3,1fr)}}
+  .stat{border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center}
+  .stat b{display:block;font-size:22px;color:var(--brand)} .stat span{font-size:12px;color:var(--muted)}
+  .code{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px dashed var(--line);border-radius:12px;padding:8px 12px;margin-top:8px;font-family:ui-monospace,monospace;direction:ltr}
+  .code button{padding:6px 12px;font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:13px} td,th{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right}
+  th{color:var(--muted);font-weight:600} .tag{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--line);font-size:12px}
+  .tag.p{background:#ccfbf1;color:#0f766e} .msg{font-size:13px;margin-top:8px;min-height:1.2em} .err{color:var(--bad)} .ok{color:var(--brand)}
+  .scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<header><h1>پنل مدیریت رایدو</h1><p>ساخت کد، آمار کاربران، مدیریت اشتراک</p></header>
+<main>
+  <section class="card" id="loginCard">
+    <h2>ورود ادمین</h2>
+    <label>رمز ادمین (ADMIN_KEY)</label>
+    <input id="key" type="password" dir="ltr" autocomplete="off" placeholder="••••••••••••••••">
+    <div class="row" style="margin-top:12px"><button id="loginBtn">ورود</button></div>
+    <div class="msg" id="loginMsg"></div>
+  </section>
+
+  <div id="app" hidden>
+    <section class="card">
+      <h2>آمار <button class="ghost" id="refresh" style="float:left;padding:4px 12px;font-size:13px">بروزرسانی</button></h2>
+      <div class="grid" id="stats"></div>
+      <div class="msg" id="versions"></div>
+    </section>
+
+    <section class="card">
+      <h2>ساخت کد فعال‌سازی</h2>
+      <label>نوع پلن</label>
+      <select id="plan">
+        <option value="MONTHLY">ماهانه عادی (۳۰ روز)</option>
+        <option value="YEARLY">سالانه عادی (۳۶۵ روز)</option>
+        <option value="PREMIUM_MONTHLY">پرمیوم ماهانه (۳۰ روز)</option>
+        <option value="PREMIUM_YEARLY">پرمیوم سالانه (۳۶۵ روز)</option>
+      </select>
+      <div class="row">
+        <div><label>تعداد</label><input id="count" type="number" min="1" max="50" value="1" dir="ltr"></div>
+        <div><label>مهلت استفاده از کد (روز)</label><input id="validDays" type="number" min="1" max="365" value="30" dir="ltr"></div>
+      </div>
+      <label>یادداشت (اختیاری، مثلاً نام خریدار)</label>
+      <input id="note" maxlength="100">
+      <div class="row" style="margin-top:12px"><button id="mk">ساخت کد</button></div>
+      <div id="codes"></div>
+      <div class="msg" id="mkMsg"></div>
+    </section>
+
+    <section class="card">
+      <h2>اعطای مستقیم اشتراک به شماره</h2>
+      <label>شماره موبایل (۰۹…)</label>
+      <input id="gPhone" dir="ltr" inputmode="numeric" maxlength="11" placeholder="09123456789">
+      <label>پلن</label>
+      <select id="gPlan">
+        <option value="MONTHLY">ماهانه عادی</option><option value="YEARLY">سالانه عادی</option>
+        <option value="PREMIUM_MONTHLY">پرمیوم ماهانه</option><option value="PREMIUM_YEARLY">پرمیوم سالانه</option>
+      </select>
+      <div class="row" style="margin-top:12px"><button id="grant">اعطا</button></div>
+      <div class="msg" id="gMsg"></div>
+    </section>
+
+    <section class="card">
+      <h2>کاربران</h2>
+      <div class="row"><input id="q" dir="ltr" inputmode="numeric" placeholder="جستجوی شماره…"><button class="ghost" id="search" style="flex:0 0 auto">جستجو</button></div>
+      <div class="scroll"><table id="users"><thead><tr><th>شماره</th><th>پلن</th><th>انقضا</th><th>آخرین فعالیت</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+</main>
+<script>
+const API = "https://atzyjiljtzxhctblziti.supabase.co/functions/v1/admin";
+const $ = (id) => document.getElementById(id);
+let KEY = "";
+try { KEY = sessionStorage.getItem("raido_admin") || ""; } catch (e) {}
+
+async function call(body) {
+  const r = await fetch(API, { method: "POST", headers: { "Content-Type": "application/json", "x-admin-key": KEY }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+  return j;
+}
+const fa = (n) => Number(n || 0).toLocaleString("fa-IR");
+const PLAN_FA = { NONE: "—", TRIAL_7: "تست ۷ روزه", MONTHLY: "ماهانه", YEARLY: "سالانه", PREMIUM_MONTHLY: "پرمیوم ماهانه", PREMIUM_YEARLY: "پرمیوم سالانه" };
+const dt = (s) => s ? new Date(s).toLocaleString("fa-IR", { dateStyle: "short", timeStyle: "short" }) : "—";
+
+async function loadStats() {
+  const s = await call({ action: "stats" });
+  const items = [["کل کاربران", s.users_total], ["جدید امروز", s.new_today], ["فعال ۲۴ساعت", s.active_1d], ["فعال ۷روز", s.active_7d], ["فعال ۳۰روز", s.active_30d],
+    ["پرمیوم فعال", s.premium_active], ["اشتراک پولی فعال", s.paid_active], ["تست فعال", s.trial_active], ["تحلیل ۷روز", s.analyses_7d], ["پذیرفته ۷روز", s.accepted_7d], ["کد مصرف‌نشده", s.codes_unused]];
+  $("stats").innerHTML = items.map(([l, v]) => `<div class="stat"><b>${fa(v)}</b><span>${l}</span></div>`).join("");
+  const v = s.versions || {};
+  $("versions").textContent = "نسخه‌ها: " + (Object.keys(v).map((k) => `${k}: ${fa(v[k])}`).join(" · ") || "—");
+}
+async function loadUsers() {
+  const { users } = await call({ action: "users", q: $("q").value });
+  $("users").querySelector("tbody").innerHTML = users.map((u) => {
+    const sub = Array.isArray(u.subscriptions) ? u.subscriptions[0] : u.subscriptions;
+    const exp = sub && sub.expires_at ? new Date(sub.expires_at) : null;
+    const active = exp && exp > new Date();
+    return `<tr><td dir="ltr">${u.phone}</td><td><span class="tag ${sub && sub.is_premium ? "p" : ""}">${PLAN_FA[sub ? sub.plan : "NONE"] || "—"}</span></td><td>${active ? dt(sub.expires_at) : "<span class=err>منقضی/ندارد</span>"}</td><td>${dt(u.last_seen)}</td></tr>`;
+  }).join("") || `<tr><td colspan="4">کاربری یافت نشد</td></tr>`;
+}
+async function enter() {
+  $("loginCard").hidden = true; $("app").hidden = false;
+  await Promise.all([loadStats(), loadUsers()]);
+}
+$("loginBtn").onclick = async () => {
+  KEY = $("key").value.trim(); $("loginMsg").textContent = "";
+  try { await call({ action: "stats" }); try { sessionStorage.setItem("raido_admin", KEY); } catch (e) {} await enter(); }
+  catch (e) { $("loginMsg").className = "msg err"; $("loginMsg").textContent = e.message === "forbidden" ? "رمز اشتباه است" : "خطا: " + e.message; }
+};
+$("refresh").onclick = () => Promise.all([loadStats(), loadUsers()]).catch((e) => alert(e.message));
+$("search").onclick = () => loadUsers().catch((e) => alert(e.message));
+$("mk").onclick = async () => {
+  const b = $("mk"); b.disabled = true; $("mkMsg").textContent = ""; $("codes").innerHTML = "";
+  try {
+    const r = await call({ action: "create_codes", plan: $("plan").value, count: +$("count").value, valid_days: +$("validDays").value, note: $("note").value });
+    $("codes").innerHTML = r.codes.map((c) => `<div class="code"><span>${c}</span><button data-c="${c}">کپی</button></div>`).join("");
+    $("codes").querySelectorAll("button").forEach((x) => x.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(x.dataset.c); x.textContent = "✓"; });
+    $("mkMsg").className = "msg ok"; $("mkMsg").textContent = "کد فقط همین‌جا نمایش داده می‌شود؛ همین حالا کپی کنید.";
+    loadStats();
+  } catch (e) { $("mkMsg").className = "msg err"; $("mkMsg").textContent = "خطا: " + e.message; }
+  b.disabled = false;
+};
+$("grant").onclick = async () => {
+  try {
+    await call({ action: "grant", phone: $("gPhone").value.trim(), plan: $("gPlan").value });
+    $("gMsg").className = "msg ok"; $("gMsg").textContent = "اشتراک اعمال شد."; loadUsers(); loadStats();
+  } catch (e) { $("gMsg").className = "msg err"; $("gMsg").textContent = e.message === "user_not_found" ? "کاربری با این شماره پیدا نشد (باید یک‌بار وارد اپ شده باشد)" : "خطا: " + e.message; }
+};
+if (KEY) enter().catch(() => { $("loginCard").hidden = false; $("app").hidden = true; });
+</script>
+</body>
+</html>
