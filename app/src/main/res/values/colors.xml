@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand">#ff2563EB</color>
-    <color name="ic_launcher_background">#ff2563EB</color>
+    <!-- RAIDO UI Target v1 — teal brand (matches RAIDO-UI-TARGET.html) -->
+    <color name="brand">#ff0c4745</color>
+    <color name="brand_teal2">#ff16736b</color>
+    <color name="brand_mint">#ffb9f1dc</color>
+    <color name="brand_lime">#ffd5f36b</color>
+    <color name="paper">#fff4f7f4</color>
+    <color name="line">#ffe4ebe7</color>
+    <color name="ink">#ff102a2b</color>
+    <color name="muted">#ff738181</color>
+    <color name="ic_launcher_background">#ff0c4745</color>
     <color name="verdictGray">#ff64748B</color>
-    <color name="verdictGreen">#ff16A34A</color>
-    <color name="verdictRed">#ffDC2626</color>
-    <color name="verdictYellow">#ffCA8A04</color>
+    <color name="verdictGreen">#ff21896e</color>
+    <color name="verdictRed">#ffd65b52</color>
+    <color name="verdictYellow">#ffd59b39</color>
 </resources>
