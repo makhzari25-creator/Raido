@@ -847,8 +847,8 @@ public final class MainActivity extends BaseActivity {
 
             LinearLayout costRow = new LinearLayout(act2);
             costRow.setOrientation(LinearLayout.HORIZONTAL);
-            TextView[] fo = new TextView[1];
-            TextView[] dpo = new TextView[1];
+            TextView[] fo = new TextView[2];
+            TextView[] dpo = new TextView[2];
             LinearLayout fuelBox = costTile("بنزین واقعی GPS", 0xFFFFFBEB, 0xFFFDE68A, 0xFFF59E0B, fo);
             LinearLayout depBox = costTile("استهلاک واقعی GPS", 0xFFF5F3FF, 0xFFDDD6FE, 0xFF7C3AED, dpo);
             this.gpsFuelLabel = fo[0]; this.gpsFuelUnit = fuelUnitOf(fuelBox);
@@ -862,7 +862,9 @@ public final class MainActivity extends BaseActivity {
             LinearLayout.LayoutParams lpC = new LinearLayout.LayoutParams(-1, -2);
             lpC.bottomMargin = dpi(14);
             this.content.addView(costRow, lpC);
-
+        } catch (Throwable ignored) {}
+        try {
+            final MainActivity act2 = mainActivity;
             LinearLayout trendCard = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
             trendCard.addView(sectionHeader("روند میانگین ساعتی", 0xFF0D9488, "۷ روز اخیر"));
             LinearLayout trendHost = new LinearLayout(act2);
