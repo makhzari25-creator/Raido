@@ -352,35 +352,113 @@ public final class MainActivity extends BaseActivity {
 
     private final void showAppMenu(View anchor) {
         final String[] items = new String[]{
-                "تنظیمات",
-                "محدوده فعالیت",
-                "آمار و گزارش‌ها",
-                "جزئیات آخرین نتیجه",
-                "اشتراک و مالی",
-                "درباره و پشتیبانی"
+                "تنظیمات", "محدوده فعالیت", "آمار و گزارش‌ها",
+                "جزئیات آخرین نتیجه", "اشتراک و مالی", "درباره و پشتیبانی"
         };
-        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this);
-        b.setTitle("منوی RAIDO");
-        b.setItems(items, new android.content.DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(android.content.DialogInterface dialog, int which) {
-                Class<?> target = null;
-                switch (which) {
-                    case 0: target = SettingsActivity.class; break;
-                    case 1: target = ActivityZoneActivity.class; break;
-                    case 2: target = ReportsActivity.class; break;
-                    case 3: target = DetailsActivity.class; break;
-                    case 4: target = SubscriptionActivity.class; break;
-                    case 5: target = SupportActivity.class; break;
-                    default: break;
+        final int[] icons = new int[]{
+                R.drawable.ic_mn_settings, R.drawable.ic_mn_zone, R.drawable.ic_mn_stats,
+                R.drawable.ic_mn_doc, R.drawable.ic_mn_wallet, R.drawable.ic_mn_support
+        };
+        final Class<?>[] targets = new Class<?>[]{
+                SettingsActivity.class, ActivityZoneActivity.class, ReportsActivity.class,
+                DetailsActivity.class, SubscriptionActivity.class, SupportActivity.class
+        };
+        final android.app.Dialog dlg = new android.app.Dialog(this);
+        dlg.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
+
+        LinearLayout sheet = new LinearLayout(this);
+        sheet.setOrientation(LinearLayout.VERTICAL);
+        float r = dpi(28);
+        GradientDrawable sbg = new GradientDrawable();
+        sbg.setColor(0xFFFFFFFF);
+        sbg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
+        sheet.setBackground(sbg);
+        sheet.setPadding(dpi(20), dpi(10), dpi(20), dpi(20));
+
+        View handle = new View(this);
+        handle.setBackground(shape(0xFFCBD5E1, 3, 0));
+        LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(dpi(40), dpi(5));
+        hlp.gravity = android.view.Gravity.CENTER_HORIZONTAL;
+        hlp.bottomMargin = dpi(14);
+        sheet.addView(handle, hlp);
+
+        TextView title = tv("منوی RAIDO", 18f, 0xFF0F172A, true);
+        title.setGravity(android.view.Gravity.CENTER);
+        title.setPadding(0, 0, 0, dpi(8));
+        sheet.addView(title, new LinearLayout.LayoutParams(-1, -2));
+
+        for (int i = 0; i < items.length; i++) {
+            final int idx = i;
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            row.setMinimumHeight(dpi(62));
+            android.graphics.drawable.RippleDrawable rip = new android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(0x1A2563EB), null, shape(0xFFFFFFFF, 14, 0));
+            row.setBackground(rip);
+
+            ImageView ic = new ImageView(this);
+            ic.setImageResource(icons[i]);
+            ic.setColorFilter(0xFF2563EB);
+            ic.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+            ic.setPadding(dpi(11), dpi(11), dpi(11), dpi(11));
+            ic.setBackground(shape(0xFFEFF6FF, 14, 0));
+            row.addView(ic, new LinearLayout.LayoutParams(dpi(46), dpi(46)));
+
+            TextView lb = tv(items[i], 16f, 0xFF0F172A, false);
+            lb.setPaddingRelative(dpi(14), 0, 0, 0);
+            row.addView(lb, new LinearLayout.LayoutParams(0, -2, 1f));
+
+            ImageView ch = new ImageView(this);
+            ch.setImageResource(R.drawable.ic_mn_chev);
+            ch.setColorFilter(0xFF94A3B8);
+            row.addView(ch, new LinearLayout.LayoutParams(dpi(22), dpi(22)));
+
+            row.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    dlg.dismiss();
+                    startActivity(new Intent(MainActivity.this, targets[idx]));
                 }
-                if (target != null) {
-                    startActivity(new Intent(MainActivity.this, target));
-                }
+            });
+            sheet.addView(row, new LinearLayout.LayoutParams(-1, -2));
+            if (i < items.length - 1) {
+                View d = divider();
+                LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(-1, Math.max(1, dpi(1)));
+                dl.setMargins(dpi(60), 0, 0, 0);
+                sheet.addView(d, dl);
             }
+        }
+
+        LinearLayout close = new LinearLayout(this);
+        close.setOrientation(LinearLayout.HORIZONTAL);
+        close.setGravity(android.view.Gravity.CENTER);
+        close.setBackground(shape(0xFFF1F5F9, 18, 0));
+        ImageView cx = new ImageView(this);
+        cx.setImageResource(R.drawable.ic_mn_close);
+        cx.setColorFilter(0xFF475569);
+        close.addView(cx, new LinearLayout.LayoutParams(dpi(18), dpi(18)));
+        TextView ct = tv("بستن", 16f, 0xFF334155, true);
+        ct.setPaddingRelative(dpi(8), 0, 0, 0);
+        close.addView(ct);
+        close.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { dlg.dismiss(); }
         });
-        b.setNegativeButton("بستن", null);
-        b.show();
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-1, dpi(54));
+        clp.topMargin = dpi(14);
+        sheet.addView(close, clp);
+
+        try { Fonts.INSTANCE.applyRecursive(sheet); } catch (Throwable ignored) {}
+        dlg.setContentView(sheet);
+        android.view.Window w = dlg.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));
+            w.setGravity(android.view.Gravity.BOTTOM);
+            w.setLayout(-1, -2);
+            w.setDimAmount(0.45f);
+            w.setWindowAnimations(android.R.style.Animation_InputMethod);
+        }
+        dlg.setCanceledOnTouchOutside(true);
+        dlg.show();
     }
 
     // ───────── helpers ظاهری داشبورد ─────────
