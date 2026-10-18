@@ -12,9 +12,9 @@ import android.widget.TextView;
  */
 public final class HelpActivity extends BaseActivity {
 
-    private static final int TEXT_DARK = 0xFF0F172A;
-    private static final int TEXT_MUTED = 0xFF475569;
-    private static final int PRIMARY = 0xFF0D5C4D;
+    private static final int TEXT_DARK = 0xFF102A2B;
+    private static final int TEXT_MUTED = 0xFF738181;
+    private static final int PRIMARY = 0xFF0C4745;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,7 +24,7 @@ public final class HelpActivity extends BaseActivity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(18), dp(16), dp(18), dp(28));
-        root.setBackgroundColor(0xFFF8FAFC);
+        root.setBackgroundColor(0xFFF4F7F4);
 
         addTitle(root, "راهنمای رایدو");
         addPara(root, "رایدو به راننده اسنپ کمک می‌کند بفهمد هر درخواست به‌صرفه است یا نه — قبل از قبول سفر. کارت تحلیل رنگی روی صفحه اسنپ می‌آید.");
@@ -138,9 +138,9 @@ public final class HelpActivity extends BaseActivity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(14), dp(16), dp(14));
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(14));
+        bg.setCornerRadius(dp(18));
         bg.setColor(Color.WHITE);
-        bg.setStroke(dp(1), 0xFFE2E8F0);
+        bg.setStroke(dp(1), 0xFFE4EBE7);
         card.setBackground(bg);
 
         TextView b = new TextView(this);
