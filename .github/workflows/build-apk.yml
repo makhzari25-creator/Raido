@@ -2,7 +2,7 @@ name: Build RAIDO APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, ui/target-v1]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
