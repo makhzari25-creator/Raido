@@ -43,7 +43,9 @@ public final class MainActivity extends BaseActivity {
     private TextView speedLabel;
     private TextView distUnit;
     private TextView speedUnit;
-    private TextView avgHourlyBody;
+    private LinearLayout avgHourlyBody;
+    private TextView gpsFuelUnit;
+    private TextView gpsDepUnit;
     private TextView acceptedIncomeLabel;
     private TextView gpsFuelLabel;
     private TextView gpsDepLabel;
@@ -436,7 +438,7 @@ public final class MainActivity extends BaseActivity {
         head.setGravity(android.view.Gravity.CENTER_VERTICAL);
         head.addView(chip(glyph, accent, 28));
         TextView cap = tv(caption, 13f, 0xFF475569, false);
-        cap.setPadding(dpi(8), 0, 0, 0);
+        cap.setPaddingRelative(dpi(8), 0, 0, 0);
         head.addView(cap);
         box.addView(head);
         LinearLayout row = new LinearLayout(this);
@@ -458,17 +460,83 @@ public final class MainActivity extends BaseActivity {
         return box;
     }
 
-    /** مربع کوچک متنی (بنزین/استهلاک) */
-    private LinearLayout costTile(String caption, TextView[] out) {
+    /** عنوان بخش با نوار رنگی کوتاه */
+    private LinearLayout sectionHeader(String title, int accent, String sub) {
+        LinearLayout h = new LinearLayout(this);
+        h.setOrientation(LinearLayout.HORIZONTAL);
+        h.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        View bar = new View(this);
+        bar.setBackground(shape(accent, 3, 0));
+        h.addView(bar, new LinearLayout.LayoutParams(dpi(4), dpi(sub == null ? 20 : 34)));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPaddingRelative(dpi(10), 0, 0, 0);
+        col.addView(tv(title, 17f, 0xFF0F172A, true));
+        if (sub != null) col.addView(tv(sub, 13f, 0xFF64748B, false));
+        h.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.bottomMargin = dpi(12);
+        h.setLayoutParams(lp);
+        return h;
+    }
+
+    private LinearLayout softBox(int fill, int stroke) {
+        LinearLayout b = new LinearLayout(this);
+        b.setOrientation(LinearLayout.VERTICAL);
+        b.setBackground(shape(fill, 16, stroke));
+        b.setPadding(dpi(14), dpi(12), dpi(14), dpi(12));
+        b.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+        return b;
+    }
+
+    /** ردیف برچسب | مقدار داخل جعبهٔ ملایم */
+    private View statRow(String label, String value, boolean muted, boolean last) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        r.setBackground(shape(0xFFF8FAFC, 14, 0xFFE2E8F0));
+        r.setPadding(dpi(14), dpi(12), dpi(14), dpi(12));
+        r.addView(tv(label, 14f, 0xFF475569, false), new LinearLayout.LayoutParams(0, -2, 1f));
+        r.addView(tv(value, muted ? 14f : 15f, muted ? 0xFF94A3B8 : 0xFF0F172A, !muted));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        if (!last) lp.bottomMargin = dpi(8);
+        r.setLayoutParams(lp);
+        return r;
+    }
+
+    /** مربع بنزین/استهلاک: out[0]=عدد، out[1]=واحد */
+    private LinearLayout costTile(String caption, int tint, int edge, int accent, TextView[] out) {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dpi(14), dpi(12), dpi(14), dpi(12));
-        box.setBackground(shape(0xFFF8FAFC, 18, 0xFFE2E8F0));
-        box.addView(tv(caption, 13f, 0xFF64748B, false));
-        TextView v = tv("—", 18f, 0xFF0F172A, true);
-        v.setPadding(0, dpi(6), 0, 0);
-        box.addView(v);
-        out[0] = v;
+        box.setPadding(dpi(14), dpi(14), dpi(14), dpi(14));
+        box.setBackground(shape(tint, 20, edge));
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        View dot = new View(this);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(accent);
+        dot.setBackground(g);
+        head.addView(dot, new LinearLayout.LayoutParams(dpi(10), dpi(10)));
+        TextView cap = tv(caption, 13f, 0xFF475569, false);
+        cap.setPaddingRelative(dpi(8), 0, 0, 0);
+        head.addView(cap);
+        box.addView(head);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.BOTTOM);
+        TextView n = tv("—", 22f, 0xFF0F172A, true);
+        n.setSingleLine(true);
+        TextView u = tv("تومان", 12f, 0xFF64748B, false);
+        u.setPaddingRelative(dpi(5), 0, 0, dpi(3));
+        row.addView(n);
+        row.addView(u);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-2, -2);
+        rlp.topMargin = dpi(12);
+        box.addView(row, rlp);
+        out[0] = n;
+        out[1] = u;
         return box;
     }
 
@@ -485,6 +553,13 @@ public final class MainActivity extends BaseActivity {
         r.addView(p);
         r.setOnClickListener(click);
         return new UiKit.StatusRow(r, p);
+    }
+
+    private TextView fuelUnitOf(LinearLayout box) {
+        try {
+            LinearLayout row = (LinearLayout) box.getChildAt(1);
+            return (TextView) row.getChildAt(1);
+        } catch (Throwable t) { return null; }
     }
 
     private View divider() {
@@ -512,7 +587,7 @@ public final class MainActivity extends BaseActivity {
         subRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
         subRow.addView(chip(accessOk ? "✓" : "✗", accessOk ? 0xFF16A34A : 0xFFDC2626, 32));
         TextView subTitle = tv(statusText, 17f, accessOk ? 0xFF166534 : 0xFF991B1B, true);
-        subTitle.setPadding(dpi(12), 0, 0, 0);
+        subTitle.setPaddingRelative(dpi(12), 0, 0, 0);
         subRow.addView(subTitle, new LinearLayout.LayoutParams(0, -2, 1f));
         subCard.addView(subRow);
         if (!accessOk) {
@@ -539,9 +614,9 @@ public final class MainActivity extends BaseActivity {
         LinearLayout tipHeader = new LinearLayout(mainActivity);
         tipHeader.setOrientation(LinearLayout.HORIZONTAL);
         tipHeader.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        tipHeader.addView(chip("!", 0xFFEA580C, 28));
+        tipHeader.addView(chip("!", 0xFFEA580C, 30));
         TextView tipTitle = tv("برای تحلیل دقیق", 16f, 0xFF9A3412, true);
-        tipTitle.setPadding(dpi(10), 0, 0, 0);
+        tipTitle.setPaddingRelative(dpi(10), 0, 0, 0);
         tipHeader.addView(tipTitle, new LinearLayout.LayoutParams(0, -2, 1f));
         this.tipWarnBtn = tv("▾", 18f, 0xFFEA580C, true);
         this.tipWarnBtn.setPadding(dpi(10), dpi(4), dpi(4), dpi(4));
@@ -639,7 +714,7 @@ public final class MainActivity extends BaseActivity {
 
         // ── آخرین نتیجه ──
         LinearLayout card3 = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
-        addHeaderTitle(card3, getString(R.string.last_result));
+        card3.addView(sectionHeader(getString(R.string.last_result), 0xFF2563EB, null));
         LinearLayout lastHost = new LinearLayout(mainActivity);
         lastHost.setOrientation(LinearLayout.VERTICAL);
         card3.addView(lastHost);
@@ -655,13 +730,12 @@ public final class MainActivity extends BaseActivity {
         try {
             final MainActivity act = mainActivity;
             LinearLayout avgCard = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
-            avgCard.addView(tv("میانگین ساعتی درخواست‌ها", 17f, 0xFF0F172A, true));
-            TextView avgSub = tv("", 14f, 0xFF475569, false);
-            avgSub.setLineSpacing(dpi(3), 1f);
-            avgSub.setPadding(0, dpi(10), 0, 0);
-            avgCard.addView(avgSub);
-            this.avgHourlyBody = avgSub;
-            fillAvgHourlyBody(act, avgSub);
+            avgCard.addView(sectionHeader("میانگین ساعتی درخواست‌ها", 0xFF7C3AED, "درآمد ساعتی تحلیل‌شده‌ها"));
+            LinearLayout avgHost = new LinearLayout(act);
+            avgHost.setOrientation(LinearLayout.VERTICAL);
+            avgCard.addView(avgHost);
+            this.avgHourlyBody = avgHost;
+            fillAvgHourlyBody(act, avgHost);
             avgCard.setClickable(true);
             avgCard.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
@@ -677,10 +751,10 @@ public final class MainActivity extends BaseActivity {
         try {
             final MainActivity act2 = mainActivity;
             LinearLayout accCard = dashCard(0xFFECFDF5, 0xFFA7F3D0);
-            accCard.addView(tv("درآمد ساعتی قبول‌شده‌ها", 14f, 0xFF047857, true));
-            TextView accVal = tv("", 20f, 0xFF047857, true);
+            accCard.addView(sectionHeader("درآمد ساعتی قبول‌شده‌ها", 0xFF059669, "فقط سفرهایی که «رفتم» زده‌اید"));
+            TextView accVal = tv("", 24f, 0xFF047857, true);
             accVal.setLineSpacing(dpi(3), 1f);
-            accVal.setPadding(0, dpi(8), 0, 0);
+            accVal.setPadding(0, dpi(2), 0, 0);
             this.acceptedIncomeLabel = accVal;
             accCard.addView(accVal);
             accCard.setClickable(true);
@@ -697,10 +771,10 @@ public final class MainActivity extends BaseActivity {
             costRow.setOrientation(LinearLayout.HORIZONTAL);
             TextView[] fo = new TextView[1];
             TextView[] dpo = new TextView[1];
-            LinearLayout fuelBox = costTile("بنزین واقعی GPS", fo);
-            LinearLayout depBox = costTile("استهلاک واقعی GPS", dpo);
-            this.gpsFuelLabel = fo[0];
-            this.gpsDepLabel = dpo[0];
+            LinearLayout fuelBox = costTile("بنزین واقعی GPS", 0xFFFFFBEB, 0xFFFDE68A, 0xFFF59E0B, fo);
+            LinearLayout depBox = costTile("استهلاک واقعی GPS", 0xFFF5F3FF, 0xFFDDD6FE, 0xFF7C3AED, dpo);
+            this.gpsFuelLabel = fo[0]; this.gpsFuelUnit = fuelUnitOf(fuelBox);
+            this.gpsDepLabel = dpo[0]; this.gpsDepUnit = fuelUnitOf(depBox);
             LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(0, -2, 1f);
             hp.setMargins(0, 0, dpi(5), 0);
             costRow.addView(fuelBox, hp);
@@ -712,19 +786,19 @@ public final class MainActivity extends BaseActivity {
             this.content.addView(costRow, lpC);
 
             LinearLayout trendCard = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
-            trendCard.addView(tv("روند میانگین ساعتی · ۷ روز", 15f, 0xFF334155, true));
+            trendCard.addView(sectionHeader("روند میانگین ساعتی", 0xFF0D9488, "۷ روز اخیر"));
             LinearLayout trendHost = new LinearLayout(act2);
             trendHost.setOrientation(LinearLayout.VERTICAL);
-            trendHost.setPadding(0, dpi(12), 0, 0);
+            trendHost.setPadding(0, 0, 0, 0);
             this.chartTrendHost = trendHost;
             trendCard.addView(trendHost);
             this.content.addView(trendCard);
 
             LinearLayout benchCard = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
-            benchCard.addView(tv("این ساعت در یک نگاه", 15f, 0xFF334155, true));
+            benchCard.addView(sectionHeader("این ساعت در یک نگاه", 0xFFEA580C, "کف، بازار و آخرین تحلیل"));
             LinearLayout benchHost = new LinearLayout(act2);
             benchHost.setOrientation(LinearLayout.VERTICAL);
-            benchHost.setPadding(0, dpi(8), 0, 0);
+            benchHost.setPadding(0, 0, 0, 0);
             this.benchmarkHost = benchHost;
             benchCard.addView(benchHost);
             TextView bHint = tv("اعداد به هزار تومان · فقط نمایش", 12f, 0xFF94A3B8, false);
@@ -824,14 +898,18 @@ public final class MainActivity extends BaseActivity {
                 UiKit uiKit = UiKit.INSTANCE;
                 String string = getString(R.string.empty_last_result_title);
                 Intrinsics.checkNotNullExpressionValue(string, "getString(...)");
-                linearLayout2.addView(UiKit.text$default(uiKit, mainActivity, string, 14.0f, 700, null, 16, null));
+                LinearLayout eb = softBox(0xFFF8FAFC, 0xFFE2E8F0);
+                eb.addView(tv(string, 15f, 0xFF0F172A, true));
+                this.lastBody.addView(eb);
             }
             LinearLayout linearLayout3 = this.lastBody;
             if (linearLayout3 != null) {
                 UiKit uiKit2 = UiKit.INSTANCE;
                 String string2 = getString(R.string.empty_last_result_body);
                 Intrinsics.checkNotNullExpressionValue(string2, "getString(...)");
-                linearLayout3.addView(UiKit.text$default(uiKit2, mainActivity, string2, 12.0f, 400, null, 16, null));
+                TextView eb2 = tv(string2, 13.5f, 0xFF64748B, false);
+                eb2.setLineSpacing(dpi(3), 1f);
+                ((LinearLayout) linearLayout3.getChildAt(0)).addView(eb2);
                 return;
             }
             return;
@@ -895,6 +973,8 @@ public final class MainActivity extends BaseActivity {
             if (speedUnit != null) speedUnit.setText("GPS خاموش");
             if (gpsFuelLabel != null) gpsFuelLabel.setText("خاموش");
             if (gpsDepLabel != null) gpsDepLabel.setText("خاموش");
+            if (gpsFuelUnit != null) gpsFuelUnit.setVisibility(View.GONE);
+            if (gpsDepUnit != null) gpsDepUnit.setVisibility(View.GONE);
         } else {
             if (d != null) d.setText(String.format(java.util.Locale.US, "%.1f", km));
             if (distUnit != null) distUnit.setText("km");
@@ -909,8 +989,10 @@ public final class MainActivity extends BaseActivity {
                 EngineSettings es = Store.INSTANCE.settings(this);
                 double fuel = km * (es.getFuelPer100() / 100.0) * es.getFuelPrice();
                 double dep = km * es.getDepPerKm();
-                if (gpsFuelLabel != null) gpsFuelLabel.setText(Ui.INSTANCE.money(fuel) + " ت");
-                if (gpsDepLabel != null) gpsDepLabel.setText(Ui.INSTANCE.money(dep) + " ت");
+                if (gpsFuelLabel != null) gpsFuelLabel.setText(Ui.INSTANCE.money(fuel));
+                if (gpsDepLabel != null) gpsDepLabel.setText(Ui.INSTANCE.money(dep));
+                if (gpsFuelUnit != null) gpsFuelUnit.setVisibility(View.VISIBLE);
+                if (gpsDepUnit != null) gpsDepUnit.setVisibility(View.VISIBLE);
             } catch (Throwable ignored) {
                 if (gpsFuelLabel != null) gpsFuelLabel.setText("—");
                 if (gpsDepLabel != null) gpsDepLabel.setText("—");
@@ -921,8 +1003,12 @@ public final class MainActivity extends BaseActivity {
             if (acceptedIncomeLabel != null) {
                 RaidoDataStore.AcceptedAvg a = RaidoDataStore.INSTANCE.acceptedHourlyAvg(this);
                 if (a.count > 0) {
+                    acceptedIncomeLabel.setTextSize(24f);
+                    acceptedIncomeLabel.setTextColor(0xFF047857);
                     acceptedIncomeLabel.setText(Ui.INSTANCE.money(a.avg) + " تومان\n" + a.count + " سفر قبول‌شده");
                 } else {
+                    acceptedIncomeLabel.setTextSize(14.5f);
+                    acceptedIncomeLabel.setTextColor(0xFF64748B);
                     acceptedIncomeLabel.setText("هنوز سفری با «رفتم» ثبت نشده");
                 }
             }
@@ -932,7 +1018,17 @@ public final class MainActivity extends BaseActivity {
             if (chartTrendHost != null) {
                 chartTrendHost.removeAllViews();
                 float[] av = RaidoDataStore.INSTANCE.last7DayHourlyAvgs(this);
-                chartTrendHost.addView(ChartKit.areaSpark(this, av, 88));
+                boolean anyV = false;
+                if (av != null) for (float f : av) if (f > 0) { anyV = true; break; }
+                if (anyV) {
+                    chartTrendHost.addView(ChartKit.areaSpark(this, av, 88));
+                } else {
+                    LinearLayout eb = softBox(0xFFF0FDFA, 0xFFCCFBF1);
+                    TextView et = tv("هنوز دادهٔ کافی برای نمودار نیست. با ثبت تحلیل‌ها، روند ۷ روزه اینجا می‌آید.", 14f, 0xFF0F766E, false);
+                    et.setLineSpacing(dpi(3), 1f);
+                    eb.addView(et);
+                    chartTrendHost.addView(eb);
+                }
             }
         } catch (Throwable ignored) {}
         // بنچمارک کف / بازار / آخرین
@@ -956,22 +1052,23 @@ public final class MainActivity extends BaseActivity {
         } catch (Throwable ignored) {}
     }
 
-    private static void fillAvgHourlyBody(MainActivity act, TextView avgSub) {
-        if (act == null || avgSub == null) return;
+    private static void fillAvgHourlyBody(MainActivity act, LinearLayout host) {
+        if (act == null || host == null) return;
+        host.removeAllViews();
         try {
             RaidoDataStore.DashboardHourly snap = RaidoDataStore.INSTANCE.snapshotDashboard(act);
             int h2 = snap.currentHour == 23 ? 24 : snap.currentHour + 1;
             String hRange = String.format(java.util.Locale.US, "%02d–%02d", snap.currentHour, h2);
-            String hourTxt = snap.hourCount > 0
-                    ? ("الان (" + hRange + "): " + Ui.INSTANCE.money(snap.hourAvg) + " تومان · " + snap.hourCount + " تحلیل")
-                    : ("الان (" + hRange + "): هنوز تحلیلی نیست");
-            String dayTxt = snap.dayCount > 0
-                    ? ("امروز: " + Ui.INSTANCE.money(snap.dayAvg) + " تومان · " + snap.dayCount + " تحلیل")
-                    : "امروز: هنوز تحلیلی ثبت نشده";
-            avgSub.setText(hourTxt + "\n" + dayTxt + "\nبرای جزئیات روز و ساعت‌ها اینجا بزنید ←");
-        } catch (Throwable ignored) {
-            avgSub.setText("برای جزئیات روز و ساعت‌ها اینجا بزنید ←");
-        }
+            boolean hOk = snap.hourCount > 0;
+            host.addView(act.statRow("الان (" + hRange + ")",
+                    hOk ? (Ui.INSTANCE.money(snap.hourAvg) + " تومان · " + snap.hourCount + " تحلیل") : "هنوز تحلیلی نیست", !hOk, false));
+            boolean dOk = snap.dayCount > 0;
+            host.addView(act.statRow("امروز",
+                    dOk ? (Ui.INSTANCE.money(snap.dayAvg) + " تومان · " + snap.dayCount + " تحلیل") : "هنوز تحلیلی ثبت نشده", !dOk, true));
+        } catch (Throwable ignored) {}
+        TextView more = act.tv("جزئیات روز و ساعت‌ها ←", 14f, 0xFF2563EB, true);
+        more.setPadding(0, act.dpi(12), 0, 0);
+        host.addView(more);
     }
 
     private final GradientDrawable pillBg(int color) {
