@@ -58,7 +58,6 @@ public final class LoginActivity extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // بازگشت از تلگرام (یا ادامهٔ درخواست نیمه‌کاره)
         SharedPreferences sp = getSharedPreferences(P, Context.MODE_PRIVATE);
         String code = sp.getString("code", null);
         long at = sp.getLong("at", 0L);
@@ -77,13 +76,13 @@ public final class LoginActivity extends BaseActivity {
     private void buildUi() {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
-        shell.setBackgroundColor(0xFFF0FDFA);
+        shell.setBackgroundColor(0xFFF4F7F4);
 
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.VERTICAL);
         top.setPadding(dp(18), dp(26), dp(18), dp(26));
         top.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF0B3D3A, 0xFF134E4A, 0xFF0F766E}));
+                new int[]{0xFF0C4745, 0xFF0D4D48, 0xFF16736B}));
         top.addView(tv("RAIDO · ورود", 12f, 0xCCFFFFFF, false));
         TextView h1 = tv("ورود با تلگرام", 22f, Color.WHITE, true);
         h1.setPadding(0, dp(8), 0, 0);
@@ -103,13 +102,13 @@ public final class LoginActivity extends BaseActivity {
         card.setPadding(dp(15), dp(16), dp(15), dp(16));
         GradientDrawable cg = new GradientDrawable();
         cg.setColor(Color.WHITE);
-        cg.setCornerRadius(dp(20));
-        cg.setStroke(dp(1), 0xFF99F6E4);
+        cg.setCornerRadius(dp(18));
+        cg.setStroke(dp(1), 0xFFE4EBE7);
         card.setBackground(cg);
 
         TextView steps = tv("۱) دکمهٔ زیر را بزن تا تلگرام باز شود\n"
                 + "۲) در ربات «Start» و بعد «تأیید شمارهٔ من» را بزن\n"
-                + "۳) به رایدو برگرد؛ خودکار وارد می‌شوی", 14f, 0xFF0F172A, false);
+                + "۳) به رایدو برگرد؛ خودکار وارد می‌شوی", 14f, 0xFF102A2B, false);
         steps.setLineSpacing(0, 1.3f);
         card.addView(steps);
 
@@ -120,7 +119,7 @@ public final class LoginActivity extends BaseActivity {
         loginBtn.setTypeface(Typeface.DEFAULT_BOLD);
         loginBtn.setTextColor(Color.WHITE);
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xFF14B8A6, 0xFF0F766E});
+                new int[]{0xFF16736B, 0xFF0C4745});
         bg.setCornerRadius(dp(14));
         loginBtn.setBackground(bg);
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, -2);
@@ -130,12 +129,12 @@ public final class LoginActivity extends BaseActivity {
         loginBtn.setOnClickListener(v -> startLogin());
         card.addView(loginBtn);
 
-        statusTv = tv("", 13f, 0xFF0F766E, false);
+        statusTv = tv("", 13f, 0xFF0C4745, false);
         statusTv.setGravity(Gravity.CENTER);
         statusTv.setPadding(0, dp(12), 0, 0);
         card.addView(statusTv);
 
-        diagTv = tv("", 11f, 0xFF94A3B8, false);
+        diagTv = tv("", 11f, 0xFF738181, false);
         diagTv.setGravity(Gravity.CENTER);
         diagTv.setTextDirection(View.TEXT_DIRECTION_LTR);
         diagTv.setPadding(0, dp(6), 0, 0);
@@ -144,7 +143,7 @@ public final class LoginActivity extends BaseActivity {
         body.addView(card);
 
         TextView note = tv("شمارهٔ تو فقط برای شناسایی اشتراک ذخیره می‌شود.\nتلگرام روی گوشی لازم است (در صورت فیلتر، با VPN).",
-                12f, 0xFF64748B, false);
+                12f, 0xFF738181, false);
         note.setPadding(dp(4), dp(14), dp(4), 0);
         body.addView(note);
 
@@ -234,7 +233,6 @@ public final class LoginActivity extends BaseActivity {
                             return;
                         }
                     } catch (Throwable ex) {
-                        // خطای موقت شبکه: ادامه
                         diag("net: " + ex.getClass().getSimpleName() + " " + String.valueOf(ex.getMessage()));
                     }
                 }
