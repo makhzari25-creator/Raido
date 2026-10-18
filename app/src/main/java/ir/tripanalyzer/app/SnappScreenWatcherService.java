@@ -258,6 +258,7 @@ public final class SnappScreenWatcherService extends AccessibilityService {
         CharSequence packageName = event.getPackageName();
         if (Intrinsics.areEqual(packageName != null ? packageName.toString() : null, SNAPP_PACKAGE)) {
             int eventType = event.getEventType();
+            RaidoCloud.warmAsync(getApplicationContext()); // اتصال گرم برای ژئوکد (حداکثر هر ۹۰ ثانیه)
             // فقط تغییر پنجره/محتوا — نه typeViewTextChanged (۱۶) که روی نقشه مدام شلیک می‌شود
             if (eventType == 32 || eventType == 2048 || eventType == 4194304) {
                 this.handler.removeCallbacks(this.captureTask);

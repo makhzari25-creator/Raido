@@ -30,10 +30,19 @@ final class RaidoCloud {
 
     /** نتیجه: JSON پاسخ + کلید "_http" با کد HTTP. در خطای شبکه Exception پرتاب می‌شود. */
     static JSONObject post(String fn, JSONObject body, String token) throws Exception {
+        return post(fn, body, token, 8000, 12000);
+    }
+
+    /**
+     * نسخهٔ با timeout دلخواه. بعد از خواندن کامل پاسخ، اتصال را نمی‌بندیم تا
+     * keep-alive/HTTP2 اتصال گرم را برای درخواست بعدی نگه دارد (کاهش زمان TLS).
+     */
+    static JSONObject post(String fn, JSONObject body, String token, int connectMs, int readMs) throws Exception {
         HttpURLConnection c = (HttpURLConnection) new URL(BASE + fn).openConnection();
+        boolean ok = false;
         try {
-            c.setConnectTimeout(8000);
-            c.setReadTimeout(12000);
+            c.setConnectTimeout(connectMs);
+            c.setReadTimeout(readMs);
             c.setRequestMethod("POST");
             c.setDoOutput(true);
             c.setRequestProperty("Content-Type", "application/json; charset=utf-8");
@@ -55,10 +64,35 @@ final class RaidoCloud {
             JSONObject j;
             try { j = new JSONObject(txt); } catch (Exception e) { j = new JSONObject(); }
             j.put("_http", code);
+            ok = true;
             return j;
         } finally {
-            c.disconnect();
+            if (!ok) c.disconnect();
         }
+    }
+
+    private static volatile long lastWarm;
+
+    /** گرم کردن اتصال TLS به سرور (OPTIONS سبک بدون دیتابیس)؛ حداکثر هر ۹۰ ثانیه، فقط برای پرمیوم. */
+    static void warmAsync(final android.content.Context ctx) {
+        final long now = System.currentTimeMillis();
+        if (now - lastWarm < 90_000) return;
+        lastWarm = now;
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    if (!LicenseStore.INSTANCE.isPremium(ctx)) return;
+                    HttpURLConnection c = (HttpURLConnection) new URL(BASE + "geocode").openConnection();
+                    c.setConnectTimeout(3000);
+                    c.setReadTimeout(3000);
+                    c.setRequestMethod("OPTIONS");
+                    c.setRequestProperty("apikey", APIKEY);
+                    c.getResponseCode();
+                    InputStream is = c.getErrorStream() != null ? c.getErrorStream() : c.getInputStream();
+                    if (is != null) { byte[] b = new byte[512]; while (is.read(b) > 0) { } is.close(); }
+                } catch (Throwable ignored) {}
+            }
+        }).start();
     }
 
     private static volatile PublicKey cachedKey;

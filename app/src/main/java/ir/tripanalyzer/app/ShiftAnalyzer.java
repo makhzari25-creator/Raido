@@ -79,6 +79,11 @@ public final class ShiftAnalyzer {
         }
 
         // ژئوکد مقصد — منبع مختصات فقط API نشان
+        // مبدأ و مقصد هم‌زمان ژئوکد می‌شوند
+        java.util.concurrent.Future<NeshanClient.GeocodeResult> originF = null;
+        if (originText != null && originText.trim().length() >= 4) {
+            originF = NeshanClient.INSTANCE.geocodeAsync(ctx, originText);
+        }
         NeshanClient.GeocodeResult destRes = NeshanClient.INSTANCE.geocodeDetailed(ctx, destText);
         if (!destRes.ok) {
             String msg = destRes.error != null ? destRes.error : "ژئوکد مقصد ناموفق";
@@ -91,9 +96,8 @@ public final class ShiftAnalyzer {
 
         // ژئوکد مبدأ (اختیاری برای تشخیص A/B)
         NeshanClient.GeoPoint origin = null;
-        if (originText != null && originText.trim().length() >= 4) {
-            NeshanClient.GeocodeResult oRes = NeshanClient.INSTANCE.geocodeDetailed(ctx, originText);
-            origin = oRes.toPoint();
+        if (originF != null) {
+            origin = NeshanClient.await(originF).toPoint();
         }
 
         UrbanZones.City originCity = origin != null

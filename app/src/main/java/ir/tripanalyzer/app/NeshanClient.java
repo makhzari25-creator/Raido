@@ -55,6 +55,30 @@ public final class NeshanClient {
 
     private NeshanClient() {}
 
+    private static final java.util.concurrent.ExecutorService POOL =
+            java.util.concurrent.Executors.newCachedThreadPool(new java.util.concurrent.ThreadFactory() {
+                @Override public Thread newThread(Runnable r) {
+                    Thread t = new Thread(r, "geocode");
+                    t.setDaemon(true);
+                    return t;
+                }
+            });
+
+    /** ژئوکد هم‌زمان؛ با get(...) نتیجه گرفته می‌شود. */
+    public java.util.concurrent.Future<GeocodeResult> geocodeAsync(final Context ctx, final String address) {
+        return POOL.submit(new java.util.concurrent.Callable<GeocodeResult>() {
+            @Override public GeocodeResult call() { return geocodeDetailed(ctx, address); }
+        });
+    }
+
+    public static GeocodeResult await(java.util.concurrent.Future<GeocodeResult> f) {
+        try {
+            return f.get(5, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Throwable t) {
+            return GeocodeResult.skip("ژئوکد به‌موقع تمام نشد");
+        }
+    }
+
     /** سازگاری با کد قبلی — فقط نقطه یا null */
     public GeoPoint geocode(Context ctx, String address) {
         return geocodeDetailed(ctx, address).toPoint();
@@ -75,13 +99,19 @@ public final class NeshanClient {
         }
         // کلید نشان فقط روی سرور است؛ اپ از طریق Edge Function «geocode» درخواست می‌دهد.
         if (ctx == null) return GeocodeResult.skip("بدون context");
+        // ۱) کش گوشی: بدون شبکه و فوری
+        double[] cached = GeoCache.INSTANCE.get(ctx, address);
+        if (cached != null) {
+            return new GeocodeResult(true, true, 200, "OK", cached[0], cached[1], null, "raido-cloud/geocode (کش گوشی)");
+        }
         String token = LicenseStore.INSTANCE.getToken(ctx);
         if (token == null) return GeocodeResult.skip("ورود لازم است");
         try {
             JSONObject req = new JSONObject().put("address", address.trim());
             JSONObject r;
             try {
-                r = RaidoCloud.post("geocode", req, token);
+                // timeout کوتاه: اگر سرور دیر جواب داد، تحلیل عادی بدون لایهٔ نشان نمایش داده می‌شود
+                r = RaidoCloud.post("geocode", req, token, 2500, 3500);
             } catch (Throwable net) {
                 return new GeocodeResult(true, false, 0, null, null, null,
                         "شبکه/اتصال به سرور برقرار نشد", endpoint);
@@ -113,7 +143,9 @@ public final class NeshanClient {
                 return new GeocodeResult(true, false, code, st, lat, lng,
                         "مختصات خارج از محدوده ایران", endpoint);
             }
-            return new GeocodeResult(true, true, code, st, lat, lng, null, endpoint);
+            GeoCache.INSTANCE.put(ctx, address, lat, lng);
+            return new GeocodeResult(true, true, code, st, lat, lng, null,
+                    r.optBoolean("cached") ? endpoint + " (کش سرور)" : endpoint);
         } catch (Throwable t) {
             String msg = t.getMessage();
             if (msg == null || msg.isEmpty()) msg = t.getClass().getSimpleName();

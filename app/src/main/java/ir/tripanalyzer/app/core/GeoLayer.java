@@ -85,6 +85,11 @@ public final class GeoLayer {
                     e.activityZoneStatus = "unknown";
                     return e;
                 }
+                // مقصد دوم (سفر دومقصده) هم‌زمان با مقصد اول ژئوکد می‌شود
+                java.util.concurrent.Future<NeshanClient.GeocodeResult> d2Future = null;
+                if (dest2Addr != null && dest2Addr.trim().length() > 0) {
+                    d2Future = NeshanClient.INSTANCE.geocodeAsync(applicationContext, dest2Addr);
+                }
                 NeshanClient.GeocodeResult destRes =
                         NeshanClient.INSTANCE.geocodeDetailed(applicationContext, destAddr);
                 e.geoAttempted = destRes.attempted;
@@ -114,11 +119,10 @@ public final class GeoLayer {
                     e.activityZoneStatus = "unknown";
                 }
                 // دو‌مقصده: هر دو مقصد باید داخل محدوده باشند
-                if (dest2Addr != null && dest2Addr.trim().length() > 0
+                if (d2Future != null
                         && zr.status == ActivityZoneEvaluator.Status.IN) {
                     try {
-                        NeshanClient.GeocodeResult d2 =
-                                NeshanClient.INSTANCE.geocodeDetailed(applicationContext, dest2Addr);
+                        NeshanClient.GeocodeResult d2 = NeshanClient.await(d2Future);
                         if (d2.ok && d2.lat != null && d2.lng != null) {
                             ActivityZoneEvaluator.Result zr2 = ActivityZoneEvaluator.INSTANCE.evaluate(
                                     applicationContext, d2.lat, d2.lng);
