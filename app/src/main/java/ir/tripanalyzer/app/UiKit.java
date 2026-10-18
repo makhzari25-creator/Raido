@@ -17,12 +17,19 @@ import kotlin.jvm.internal.Intrinsics;
 @Metadata(d1 = {"\u0000f\n\u0002\u0018\u0002\n\u0002\u0010\u0000\n\u0002\b\u0003\n\u0002\u0010\b\n\u0002\b\u0006\n\u0002\u0018\u0002\n\u0002\b\u0004\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010\u000e\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0002\b\u0002\n\u0002\u0010\u0007\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0002\b\u0005\n\u0002\u0010\u0002\n\u0002\b\u0002\n\u0002\u0010\u000b\n\u0000\n\u0002\u0018\u0002\n\u0002\b\b\n\u0002\u0018\u0002\n\u0002\b\u0004\bÆ\u0002\u0018\u00002\u00020\u0001:\u000278B\t\b\u0002¢\u0006\u0004\b\u0002\u0010\u0003J\u0016\u0010\n\u001a\u00020\u00052\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010\r\u001a\u00020\u0005J\u0016\u0010\u000e\u001a\u00020\u00052\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010\u000f\u001a\u00020\u0005J\u0016\u0010\u0010\u001a\u00020\u00112\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010\u0012\u001a\u00020\u0013J\u000e\u0010\u0014\u001a\u00020\u00152\u0006\u0010\u000b\u001a\u00020\fJ\u000e\u0010\u0016\u001a\u00020\u00052\u0006\u0010\u000b\u001a\u00020\fJ\u000e\u0010\u0017\u001a\u00020\u00052\u0006\u0010\u000b\u001a\u00020\fJ7\u0010\u0018\u001a\u00020\u00192\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010\u001a\u001a\u00020\u00132\u0006\u0010\u001b\u001a\u00020\u001c2\u0006\u0010\u001d\u001a\u00020\u00052\n\b\u0002\u0010\u000e\u001a\u0004\u0018\u00010\u0005¢\u0006\u0002\u0010\u001eJ\u0016\u0010\u001f\u001a\u00020 2\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010!\u001a\u00020\u0013J\u001e\u0010\"\u001a\u00020\u00192\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010#\u001a\u00020\u00132\u0006\u0010$\u001a\u00020\u0005J\u001e\u0010%\u001a\u00020&2\u0006\u0010'\u001a\u00020 2\u0006\u0010(\u001a\u00020)2\u0006\u0010\u000b\u001a\u00020\fJ\u001e\u0010*\u001a\u00020+2\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010!\u001a\u00020\u00132\u0006\u0010,\u001a\u00020)J\u0010\u0010-\u001a\u00020\u00052\u0006\u0010\u000b\u001a\u00020\fH\u0002JG\u0010'\u001a\u00020\u00152\u0006\u0010\u000b\u001a\u00020\f2\u0006\u0010!\u001a\u00020\u00132\u0006\u0010.\u001a\u00020\u00132\n\b\u0002\u0010/\u001a\u0004\u0018\u00010\u00052\n\b\u0002\u00100\u001a\u0004\u0018\u00010\u00132\n\b\u0002\u00101\u001a\u0004\u0018\u00010\u0005¢\u0006\u0002\u00102J\u001e\u00103\u001a\u0002042\u0006\u0010\u000b\u001a\u00020\f2\u0006\u00105\u001a\u00020\u00132\u0006\u00106\u001a\u00020\u0013R\u000e\u0010\u0004\u001a\u00020\u0005X\u0086T¢\u0006\u0002\n\u0000R\u000e\u0010\u0006\u001a\u00020\u0005X\u0086T¢\u0006\u0002\n\u0000R\u000e\u0010\u0007\u001a\u00020\u0005X\u0086T¢\u0006\u0002\n\u0000R\u000e\u0010\b\u001a\u00020\u0005X\u0086T¢\u0006\u0002\n\u0000R\u000e\u0010\t\u001a\u00020\u0005X\u0086T¢\u0006\u0002\n\u0000"}, d2 = {"Lir/tripanalyzer/app/UiKit;", "", "<init>", "()V", "BRAND", "", "VERDICT_GREEN", "VERDICT_YELLOW", "VERDICT_RED", "VERDICT_GRAY", "dp", "c", "Landroid/content/Context;", "v", "color", "resId", "page", "Lir/tripanalyzer/app/UiKit$Page;", "title", "", "card", "Landroid/widget/LinearLayout;", "surfaceColor", "textColor", "text", "Landroid/widget/TextView;", "s", "sizeSp", "", "weight", "(Landroid/content/Context;Ljava/lang/String;FILjava/lang/Integer;)Landroid/widget/TextView;", "statusRow", "Lir/tripanalyzer/app/UiKit$StatusRow;", "label", "pill", "textValue", "bg", "updateStatusRow", "", "row", "enabled", "", "button", "Landroid/widget/Button;", "primary", "brandStroke", "value", "valueColor", "pillText", "pillColor", "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/String;Ljava/lang/Integer;)Landroid/widget/LinearLayout;", "input", "Landroid/widget/EditText;", "hint", "initial", "Page", "StatusRow"}, k = 1, mv = {2, 0, 0}, xi = 48)
 /* loaded from: classes.dex */
 public final class UiKit {
-    public static final int BRAND = 0xFF2563EB;
+    /** Teal brand — RAIDO UI Target (premium HTML) */
+    public static final int BRAND = 0xFF0C4745;
+    public static final int BRAND_TEAL2 = 0xFF16736B;
+    public static final int BRAND_MINT = 0xFFB9F1DC;
+    public static final int PAPER = 0xFFF4F7F4;
+    public static final int LINE = 0xFFE4EBE7;
+    public static final int INK = 0xFF102A2B;
+    public static final int MUTED = 0xFF738181;
     public static final UiKit INSTANCE = new UiKit();
     public static final int VERDICT_GRAY = 0xFF64748B;
-    public static final int VERDICT_GREEN = 0xFF16A34A;
-    public static final int VERDICT_RED = 0xFFDC2626;
-    public static final int VERDICT_YELLOW = 0xFFCA8A04;
+    public static final int VERDICT_GREEN = 0xFF21896E;
+    public static final int VERDICT_RED = 0xFFD65B52;
+    public static final int VERDICT_YELLOW = 0xFFD59B39;
 
     private UiKit() {
     }
@@ -89,8 +96,9 @@ public final class UiKit {
         LinearLayout linearLayout = new LinearLayout(c);
         linearLayout.setOrientation(1);
         GradientDrawable gradientDrawable = new GradientDrawable();
-        gradientDrawable.setCornerRadius(dp(c, 16));
+        gradientDrawable.setCornerRadius(dp(c, 18));
         gradientDrawable.setColor(surfaceColor(c));
+        gradientDrawable.setStroke(dp(c, 1), LINE);
         linearLayout.setBackground(gradientDrawable);
         linearLayout.setPadding(dp(c, 16), dp(c, 14), dp(c, 16), dp(c, 14));
         LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(-1, -2);
@@ -204,7 +212,7 @@ public final class UiKit {
         GradientDrawable gradientDrawable = new GradientDrawable();
         gradientDrawable.setCornerRadius(dp(c, 14));
         if (primary) {
-            gradientDrawable.setColor(-16028061);
+            gradientDrawable.setColor(BRAND);
             button.setTextColor(-1);
         } else {
             gradientDrawable.setStroke(dp(c, 1), brandStroke(c));
@@ -253,7 +261,7 @@ public final class UiKit {
         editText.setTextSize(2, 14.0f);
         GradientDrawable gradientDrawable = new GradientDrawable();
         gradientDrawable.setCornerRadius(dp(c, 12));
-        gradientDrawable.setStroke(dp(c, 1), 855638016);
+        gradientDrawable.setStroke(dp(c, 1), LINE);
         gradientDrawable.setColor(0);
         editText.setBackground(gradientDrawable);
         editText.setPadding(dp(c, 12), dp(c, 10), dp(c, 12), dp(c, 10));
