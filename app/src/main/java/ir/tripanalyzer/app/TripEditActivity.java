@@ -43,18 +43,18 @@ public final class TripEditActivity extends BaseActivity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(20), dp(24), dp(20), dp(32));
-        root.setBackgroundColor(0xE60B1220);
+        root.setBackgroundColor(0xFFF4F7F4);
 
         TextView title = new TextView(this);
         title.setText(editingActive ? "ویرایش سفر فعال" : "ویرایش آخرین تحلیل");
-        title.setTextColor(0xFFF8FAFC);
+        title.setTextColor(0xFF102A2B);
         title.setTextSize(20);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         root.addView(title);
 
         TextView sub = new TextView(this);
         sub.setText("توقف، مقصد دوم یا قیمت جدید را دستی وارد کنید؛ سپس محاسبه مجدد.");
-        sub.setTextColor(0xFF94A3B8);
+        sub.setTextColor(0xFF738181);
         sub.setTextSize(12.5f);
         sub.setPadding(0, dp(6), 0, dp(16));
         root.addView(sub);
@@ -98,8 +98,8 @@ public final class TripEditActivity extends BaseActivity {
         save.setAllCaps(false);
         save.setTextColor(Color.WHITE);
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0xFF0F766E);
-        bg.setCornerRadius(dp(14));
+        bg.setColor(0xFF0C4745);
+        bg.setCornerRadius(dp(13));
         save.setBackground(bg);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(48));
@@ -192,15 +192,15 @@ public final class TripEditActivity extends BaseActivity {
         EditText e = new EditText(this);
         e.setText(v);
         e.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        e.setTextColor(0xFF0F172A);
-        e.setHintTextColor(0xFF94A3B8);
+        e.setTextColor(0xFF102A2B);
+        e.setHintTextColor(0xFF738181);
         return e;
     }
 
     private TextView label(String s) {
         TextView t = new TextView(this);
         t.setText(s);
-        t.setTextColor(0xFF64748B);
+        t.setTextColor(0xFF5F716C);
         t.setTextSize(12f);
         t.setPadding(0, dp(10), 0, dp(4));
         return t;
@@ -209,11 +209,11 @@ public final class TripEditActivity extends BaseActivity {
     private LinearLayout card() {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(dp(14), dp(14), dp(14), dp(14));
+        c.setPadding(dp(15), dp(14), dp(15), dp(14));
         GradientDrawable g = new GradientDrawable();
         g.setColor(0xFFFFFFFF);
-        g.setCornerRadius(dp(16));
-        g.setStroke(dp(1), 0xFFE2E8F0);
+        g.setCornerRadius(dp(18));
+        g.setStroke(dp(1), 0xFFE4EBE7);
         c.setBackground(g);
         return c;
     }
