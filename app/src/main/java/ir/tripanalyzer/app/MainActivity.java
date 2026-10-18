@@ -41,6 +41,8 @@ public final class MainActivity extends BaseActivity {
     private Runnable tipCollapseRunnable;
     private TextView distanceLabel;
     private TextView speedLabel;
+    private TextView distUnit;
+    private TextView speedUnit;
     private TextView avgHourlyBody;
     private TextView acceptedIncomeLabel;
     private TextView gpsFuelLabel;
@@ -83,10 +85,12 @@ public final class MainActivity extends BaseActivity {
     public static void resetGpsDistance(MainActivity mainActivity) {
         GpsTracker.INSTANCE.reset(mainActivity);
         if (mainActivity.distanceLabel != null) {
-            mainActivity.distanceLabel.setText("0.0 km");
+            mainActivity.distanceLabel.setText("0.0");
+            if (mainActivity.distUnit != null) mainActivity.distUnit.setText("km");
         }
         if (mainActivity.speedLabel != null) {
             mainActivity.speedLabel.setText("—");
+            if (mainActivity.speedUnit != null) mainActivity.speedUnit.setText("km/h");
         }
         Toast.makeText(mainActivity, "مسافت صفر شد", 0).show();
     }
@@ -112,7 +116,6 @@ public final class MainActivity extends BaseActivity {
             }
             CloudSync.syncIfDue(this);
         } catch (Throwable ignored) {}
-        try { if (tipCard != null) scheduleTipCollapse(); } catch (Throwable ignored) {}
         try {
             if (Store.INSTANCE.isOnboardingDone(this)
                     && !Status.INSTANCE.accessibilityEnabled(this)) {
@@ -378,29 +381,145 @@ public final class MainActivity extends BaseActivity {
         b.show();
     }
 
-    private final void buildUi() {
-        MainActivity mainActivity = this;
+    // ───────── helpers ظاهری داشبورد ─────────
+    private int dpi(int v) { return UiKit.INSTANCE.dp(this, v); }
 
-        // کارت وضعیت اشتراک (سبز / قرمز)
-        LinearLayout subCard = UiKit.INSTANCE.card(mainActivity);
+    private GradientDrawable shape(int fill, int radiusDp, int strokeColor) {
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dpi(radiusDp));
+        g.setColor(fill);
+        if (strokeColor != 0) g.setStroke(Math.max(1, dpi(1)), strokeColor);
+        return g;
+    }
+
+    private TextView tv(String s, float sp, int color, boolean bold) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextSize(sp);
+        t.setTextColor(color);
+        if (bold) t.setTypeface(null, android.graphics.Typeface.BOLD);
+        return t;
+    }
+
+    /** کارت یکدست داشبورد: شعاع ۲۲dp، لبهٔ نازک، سایهٔ کم */
+    private LinearLayout dashCard(int fill, int stroke) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setBackground(shape(fill, 22, stroke));
+        c.setPadding(dpi(18), dpi(16), dpi(18), dpi(16));
+        try { c.setElevation(dpi(2)); } catch (Throwable ignored) {}
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.setMargins(0, 0, 0, dpi(14));
+        c.setLayoutParams(lp);
+        return c;
+    }
+
+    private TextView chip(String glyph, int bg, int sizeDp) {
+        TextView t = tv(glyph, 14f, 0xFFFFFFFF, true);
+        t.setGravity(android.view.Gravity.CENTER);
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(bg);
+        t.setBackground(g);
+        t.setLayoutParams(new LinearLayout.LayoutParams(dpi(sizeDp), dpi(sizeDp)));
+        return t;
+    }
+
+    /** مربع GPS: out[0]=عدد، out[1]=واحد */
+    private LinearLayout gpsTile(String caption, String glyph, int tint, int edge, int accent, String num, String unit, TextView[] out) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dpi(14), dpi(14), dpi(14), dpi(14));
+        box.setBackground(shape(tint, 20, edge));
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        head.addView(chip(glyph, accent, 28));
+        TextView cap = tv(caption, 13f, 0xFF475569, false);
+        cap.setPadding(dpi(8), 0, 0, 0);
+        head.addView(cap);
+        box.addView(head);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        row.setGravity(android.view.Gravity.BOTTOM);
+        TextView n = tv(num, 30f, 0xFF0F172A, true);
+        n.setSingleLine(true);
+        TextView u = tv(unit, 13f, 0xFF64748B, false);
+        u.setPadding(dpi(5), 0, 0, dpi(4));
+        row.addView(n);
+        row.addView(u);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-2, -2);
+        rlp.topMargin = dpi(10);
+        rlp.gravity = android.view.Gravity.START;
+        box.addView(row, rlp);
+        out[0] = n;
+        out[1] = u;
+        return box;
+    }
+
+    /** مربع کوچک متنی (بنزین/استهلاک) */
+    private LinearLayout costTile(String caption, TextView[] out) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dpi(14), dpi(12), dpi(14), dpi(12));
+        box.setBackground(shape(0xFFF8FAFC, 18, 0xFFE2E8F0));
+        box.addView(tv(caption, 13f, 0xFF64748B, false));
+        TextView v = tv("—", 18f, 0xFF0F172A, true);
+        v.setPadding(0, dpi(6), 0, 0);
+        box.addView(v);
+        out[0] = v;
+        return box;
+    }
+
+    private UiKit.StatusRow serviceRow(String label, View.OnClickListener click) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        r.setMinimumHeight(dpi(56));
+        TextView l = tv(label, 15f, 0xFF0F172A, false);
+        r.addView(l, new LinearLayout.LayoutParams(0, -2, 1f));
+        TextView p = tv("", 13f, 0xFFFFFFFF, true);
+        p.setBackground(pillBg(UiKit.VERDICT_GRAY));
+        p.setPadding(dpi(14), dpi(6), dpi(14), dpi(6));
+        r.addView(p);
+        r.setOnClickListener(click);
+        return new UiKit.StatusRow(r, p);
+    }
+
+    private View divider() {
+        View d = new View(this);
+        d.setBackgroundColor(0xFFE2E8F0);
+        d.setLayoutParams(new LinearLayout.LayoutParams(-1, Math.max(1, dpi(1))));
+        return d;
+    }
+
+    private void addHeaderTitle(LinearLayout card, String title) {
+        TextView t = tv(title, 18f, 0xFF0F172A, true);
+        t.setPadding(0, 0, 0, dpi(10));
+        card.addView(t);
+    }
+
+    private final void buildUi() {
+        final MainActivity mainActivity = this;
+
+        // ── کارت اشتراک ──
         boolean accessOk = LicenseStore.INSTANCE.isAccessActive(mainActivity);
         String statusText = LicenseStore.INSTANCE.getStatusLabel(mainActivity);
-        TextView subTitle = new TextView(mainActivity);
-        subTitle.setText(accessOk ? "✓  " + statusText : "✗  " + statusText);
-        subTitle.setTextSize(15.0f);
-        subTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-        subTitle.setTextColor(accessOk ? 0xFF16A34A : 0xFFDC2626);
-        subCard.addView(subTitle);
+        LinearLayout subCard = dashCard(accessOk ? 0xFFF0FDF4 : 0xFFFEF2F2, accessOk ? 0xFFBBF7D0 : 0xFFFECACA);
+        LinearLayout subRow = new LinearLayout(mainActivity);
+        subRow.setOrientation(LinearLayout.HORIZONTAL);
+        subRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        subRow.addView(chip(accessOk ? "✓" : "✗", accessOk ? 0xFF16A34A : 0xFFDC2626, 32));
+        TextView subTitle = tv(statusText, 17f, accessOk ? 0xFF166534 : 0xFF991B1B, true);
+        subTitle.setPadding(dpi(12), 0, 0, 0);
+        subRow.addView(subTitle, new LinearLayout.LayoutParams(0, -2, 1f));
+        subCard.addView(subRow);
         if (!accessOk) {
-            TextView expHint = new TextView(mainActivity);
-            if (LicenseStore.INSTANCE.isActivationExpired(mainActivity)) {
-                expHint.setText("کد منقضی شده — کارت تحلیل غیرفعال است. گزارش‌ها و آمار همچنان قابل مشاهده‌اند.");
-            } else {
-                expHint.setText("برای استفاده از کارت تحلیل باید کد فعال‌سازی وارد کنید.");
-            }
-            expHint.setTextSize(13.0f);
-            expHint.setTextColor(0xFFDC2626);
-            expHint.setPadding(0, 8, 0, 8);
+            TextView expHint = tv(LicenseStore.INSTANCE.isActivationExpired(mainActivity)
+                    ? "کد منقضی شده — کارت تحلیل غیرفعال است. گزارش‌ها و آمار همچنان قابل مشاهده‌اند."
+                    : "برای استفاده از کارت تحلیل باید کد فعال‌سازی وارد کنید.", 14f, 0xFF991B1B, false);
+            expHint.setPadding(0, dpi(10), 0, dpi(4));
             subCard.addView(expHint);
             Button subBtn = UiKit.INSTANCE.button(mainActivity, "ورود / تمدید کد فعال‌سازی", true);
             subBtn.setOnClickListener(new View.OnClickListener() {
@@ -415,269 +534,153 @@ public final class MainActivity extends BaseActivity {
         }
         this.content.addView(subCard);
 
-        // هشدار مهم: مشاهده جزئیات اسنپ
-        this.tipCard = UiKit.INSTANCE.card(mainActivity);
-        this.tipCard.setBackgroundColor(0xFFFFF7ED);
+        // ── نکتهٔ مهم: فقط بار اول باز؛ بعد از آن جمع‌شونده ──
+        this.tipCard = dashCard(0xFFFFF7ED, 0xFFFED7AA);
         LinearLayout tipHeader = new LinearLayout(mainActivity);
         tipHeader.setOrientation(LinearLayout.HORIZONTAL);
         tipHeader.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        TextView tipTitle = new TextView(mainActivity);
-        tipTitle.setText("برای تحلیل دقیق");
-        tipTitle.setTextSize(17.0f);
-        tipTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-        tipTitle.setTextColor(0xFF9A3412);
-        LinearLayout.LayoutParams tipTitleLp = new LinearLayout.LayoutParams(0, -2, 1f);
-        tipHeader.addView(tipTitle, tipTitleLp);
-        this.tipWarnBtn = new TextView(mainActivity);
-        this.tipWarnBtn.setText("\u26A0");
-        this.tipWarnBtn.setTextSize(22.0f);
-        this.tipWarnBtn.setTextColor(0xFFEA580C);
-        this.tipWarnBtn.setPadding(16, 4, 8, 4);
-        this.tipWarnBtn.setOnClickListener(new View.OnClickListener() {
+        tipHeader.addView(chip("!", 0xFFEA580C, 28));
+        TextView tipTitle = tv("برای تحلیل دقیق", 16f, 0xFF9A3412, true);
+        tipTitle.setPadding(dpi(10), 0, 0, 0);
+        tipHeader.addView(tipTitle, new LinearLayout.LayoutParams(0, -2, 1f));
+        this.tipWarnBtn = tv("▾", 18f, 0xFFEA580C, true);
+        this.tipWarnBtn.setPadding(dpi(10), dpi(4), dpi(4), dpi(4));
+        tipHeader.addView(this.tipWarnBtn);
+        tipHeader.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                expandTipBanner();
+                if (tipExpanded) collapseTipBanner(); else expandTipBanner();
             }
         });
-        tipHeader.addView(this.tipWarnBtn);
         this.tipCard.addView(tipHeader);
-        this.tipBody = new TextView(mainActivity);
-        this.tipBody.setText("بعد از آمدن درخواست در اسنپ، حتماً «مشاهده جزئیات» را بزنید تا کیلومتر واقعی خوانده شود.\nرایدو تا قبل از دیدن کیلومتر تحلیل نهایی نمی‌دهد.");
-        this.tipBody.setTextSize(14.0f);
-        this.tipBody.setTextColor(0xFF9A3412);
-        this.tipBody.setPadding(0, 8, 0, 0);
+        this.tipBody = tv("بعد از آمدن درخواست در اسنپ، حتماً «مشاهده جزئیات» را بزنید تا کیلومتر واقعی خوانده شود.\nرایدو تا قبل از دیدن کیلومتر تحلیل نهایی نمی‌دهد.", 14.5f, 0xFF7C2D12, false);
+        this.tipBody.setLineSpacing(dpi(3), 1f);
+        this.tipBody.setPadding(0, dpi(10), 0, 0);
         this.tipCard.addView(this.tipBody);
         this.content.addView(this.tipCard);
-        scheduleTipCollapse();
+        boolean tipSeen = false;
+        try { tipSeen = getSharedPreferences("raido_ui", 0).getBoolean("tip_seen_v1", false); } catch (Throwable ignored) {}
+        if (tipSeen) {
+            collapseTipBanner();
+        } else {
+            try { getSharedPreferences("raido_ui", 0).edit().putBoolean("tip_seen_v1", true).apply(); } catch (Throwable ignored) {}
+            scheduleTipCollapse();
+        }
 
+        // ── وضعیت سرویس‌ها + GPS ──
+        LinearLayout card = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
+        addHeaderTitle(card, getString(R.string.services_status));
 
-        LinearLayout card = UiKit.INSTANCE.card(mainActivity);
-        UiKit uiKit = UiKit.INSTANCE;
-        String string = getString(R.string.services_status);
-        Intrinsics.checkNotNullExpressionValue(string, "getString(...)");
-        card.addView(UiKit.text$default(uiKit, mainActivity, string, 16.0f, 700, null, 16, null));
-        // دو مربع: مسافت | میانگین سرعت
         LinearLayout gpsRow = new LinearLayout(mainActivity);
         gpsRow.setOrientation(LinearLayout.HORIZONTAL);
-        gpsRow.setPadding(0, 8, 0, 8);
-
-        LinearLayout boxDist = new LinearLayout(mainActivity);
-        boxDist.setOrientation(LinearLayout.VERTICAL);
-        boxDist.setPadding(20, 16, 20, 16);
-        android.graphics.drawable.GradientDrawable bgD = new android.graphics.drawable.GradientDrawable();
-        bgD.setCornerRadius(20f);
-        bgD.setColor(0xFFF8FAFC);
-        bgD.setStroke(2, 0xFFE2E8F0);
-        boxDist.setBackground(bgD);
-        TextView distCap = new TextView(mainActivity);
-        distCap.setText("مسافت واقعی");
-        distCap.setTextSize(11f);
-        distCap.setTextColor(0xFF64748B);
-        boxDist.addView(distCap);
-        TextView textView = new TextView(mainActivity);
-        textView.setText("-- km");
-        textView.setTextSize(18f);
-        textView.setTypeface(null, android.graphics.Typeface.BOLD);
-        textView.setTextColor(0xFF0F172A);
-        this.distanceLabel = textView;
-        boxDist.addView(textView);
+        TextView[] dOut = new TextView[2];
+        TextView[] sOut = new TextView[2];
+        LinearLayout boxDist = gpsTile("مسافت واقعی", "↔", 0xFFEFF6FF, 0xFFBFDBFE, 0xFF2563EB, "--", "km", dOut);
+        LinearLayout boxSpd = gpsTile("میانگین سرعت", "➤", 0xFFF0FDF4, 0xFFBBF7D0, 0xFF16A34A, "—", "km/h", sOut);
+        this.distanceLabel = dOut[0]; this.distUnit = dOut[1];
+        this.speedLabel = sOut[0]; this.speedUnit = sOut[1];
         LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, -2, 1f);
-        half.setMargins(0, 0, 8, 0);
+        half.setMargins(0, 0, dpi(5), 0);
         gpsRow.addView(boxDist, half);
-
-        LinearLayout boxSpd = new LinearLayout(mainActivity);
-        boxSpd.setOrientation(LinearLayout.VERTICAL);
-        boxSpd.setPadding(20, 16, 20, 16);
-        android.graphics.drawable.GradientDrawable bgS = new android.graphics.drawable.GradientDrawable();
-        bgS.setCornerRadius(20f);
-        bgS.setColor(0xFFF8FAFC);
-        bgS.setStroke(2, 0xFFE2E8F0);
-        boxSpd.setBackground(bgS);
-        TextView spdCap = new TextView(mainActivity);
-        spdCap.setText("میانگین سرعت");
-        spdCap.setTextSize(11f);
-        spdCap.setTextColor(0xFF64748B);
-        boxSpd.addView(spdCap);
-        TextView spdVal = new TextView(mainActivity);
-        spdVal.setText("—");
-        spdVal.setTextSize(18f);
-        spdVal.setTypeface(null, android.graphics.Typeface.BOLD);
-        spdVal.setTextColor(0xFF0F172A);
-        this.speedLabel = spdVal;
-        boxSpd.addView(spdVal);
         LinearLayout.LayoutParams half2 = new LinearLayout.LayoutParams(0, -2, 1f);
-        half2.setMargins(8, 0, 0, 0);
+        half2.setMargins(dpi(5), 0, 0, 0);
         gpsRow.addView(boxSpd, half2);
         card.addView(gpsRow);
 
-        Button button = new Button(mainActivity);
-        button.setText("صفر کردن مسافت GPS");
-        button.setOnClickListener(new View.OnClickListener() { // from class: ir.tripanalyzer.app.MainActivity$$ExternalSyntheticLambda6
-            @Override // android.view.View.OnClickListener
-            public final void onClick(View view) {
-                MainActivity.resetGpsDistance(MainActivity.this);
-            }
+        Button button = UiKit.INSTANCE.button(mainActivity, "صفر کردن مسافت GPS", false);
+        button.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View view) { MainActivity.resetGpsDistance(MainActivity.this); }
         });
         card.addView(button);
-        UiKit uiKit2 = UiKit.INSTANCE;
-        String string2 = getString(R.string.status_accessibility);
-        Intrinsics.checkNotNullExpressionValue(string2, "getString(...)");
-        UiKit.StatusRow statusRow = uiKit2.statusRow(mainActivity, string2);
-        UiKit uiKit3 = UiKit.INSTANCE;
-        String string3 = getString(R.string.status_notification);
-        Intrinsics.checkNotNullExpressionValue(string3, "getString(...)");
-        UiKit.StatusRow statusRow2 = uiKit3.statusRow(mainActivity, string3);
+
+        card.addView(divider());
+        UiKit.StatusRow statusRow = serviceRow(getString(R.string.status_accessibility), new View.OnClickListener() {
+            @Override public void onClick(View view) { MainActivity.openAccessibilitySettings(MainActivity.this); }
+        });
         card.addView(statusRow.getContainer());
+        card.addView(divider());
+        UiKit.StatusRow statusRow2 = serviceRow(getString(R.string.status_notification), new View.OnClickListener() {
+            @Override public void onClick(View view) { MainActivity.openNotificationSettings(MainActivity.this); }
+        });
         card.addView(statusRow2.getContainer());
-        statusRow.getContainer().setOnClickListener(new View.OnClickListener() { // from class: ir.tripanalyzer.app.MainActivity$$ExternalSyntheticLambda4
-            @Override // android.view.View.OnClickListener
-            public final void onClick(View view) {
-                MainActivity.openAccessibilitySettings(MainActivity.this);
-            }
-        });
-        statusRow2.getContainer().setOnClickListener(new View.OnClickListener() { // from class: ir.tripanalyzer.app.MainActivity$$ExternalSyntheticLambda5
-            @Override // android.view.View.OnClickListener
-            public final void onClick(View view) {
-                MainActivity.openNotificationSettings(MainActivity.this);
-            }
-        });
+        card.addView(divider());
         this.accPill = statusRow.getPill();
         this.notifPill = statusRow2.getPill();
-        LinearLayout linearLayout = new LinearLayout(mainActivity);
-        linearLayout.setOrientation(0);
-        linearLayout.setPadding(0, UiKit.INSTANCE.dp(mainActivity, 10), 0, UiKit.INSTANCE.dp(mainActivity, 2));
+
+        LinearLayout swRow = new LinearLayout(mainActivity);
+        swRow.setOrientation(LinearLayout.HORIZONTAL);
+        swRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        swRow.setMinimumHeight(dpi(56));
         Switch r13 = new Switch(mainActivity);
         r13.setChecked(Store.INSTANCE.isAnalysisEnabled(mainActivity));
-        r13.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() { // from class: ir.tripanalyzer.app.MainActivity$$ExternalSyntheticLambda0
-            @Override // android.widget.CompoundButton.OnCheckedChangeListener
-            public final void onCheckedChanged(CompoundButton compoundButton, boolean z) {
+        r13.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean z) {
                 MainActivity.buildUi$lambda$1(MainActivity.this, compoundButton, z);
             }
         });
-        UiKit uiKit4 = UiKit.INSTANCE;
-        String string4 = getString(R.string.status_auto_analysis);
-        Intrinsics.checkNotNullExpressionValue(string4, "getString(...)");
-        linearLayout.addView(UiKit.text$default(uiKit4, mainActivity, string4, 14.0f, 400, null, 16, null), new LinearLayout.LayoutParams(0, -2, 1.0f));
-        linearLayout.addView(r13);
-        card.addView(linearLayout);
-        LinearLayout linearLayout4 = this.content;
-        if (linearLayout4 == null) {
-            Intrinsics.throwUninitializedPropertyAccessException("content");
-            linearLayout4 = null;
-        }
-        linearLayout4.addView(card);
-        LinearLayout card2 = UiKit.INSTANCE.card(mainActivity);
-        UiKit uiKit5 = UiKit.INSTANCE;
-        String string5 = getString(R.string.perm_title);
-        Intrinsics.checkNotNullExpressionValue(string5, "getString(...)");
-        card2.addView(uiKit5.text(mainActivity, string5, 16.0f, 700, Integer.valueOf(UiKit.VERDICT_RED)));
-        UiKit uiKit6 = UiKit.INSTANCE;
-        String string6 = getString(R.string.perm_body);
-        Intrinsics.checkNotNullExpressionValue(string6, "getString(...)");
-        card2.addView(UiKit.text$default(uiKit6, mainActivity, string6, 13.0f, 400, null, 16, null));
-        UiKit uiKit7 = UiKit.INSTANCE;
-        String string7 = getString(R.string.enable_in_settings);
-        Intrinsics.checkNotNullExpressionValue(string7, "getString(...)");
-        Button button2 = uiKit7.button(mainActivity, string7, true);
-        button2.setOnClickListener(new View.OnClickListener() { // from class: ir.tripanalyzer.app.MainActivity$$ExternalSyntheticLambda1
-            @Override // android.view.View.OnClickListener
-            public final void onClick(View view) {
-                MainActivity.buildUi$lambda$3(MainActivity.this, view);
-            }
+        swRow.addView(tv(getString(R.string.status_auto_analysis), 15f, 0xFF0F172A, false), new LinearLayout.LayoutParams(0, -2, 1f));
+        swRow.addView(r13);
+        card.addView(swRow);
+        this.content.addView(card);
+
+        // ── کارت دسترسی‌ها (فقط وقتی ناقص است) ──
+        LinearLayout card2 = dashCard(0xFFFEF2F2, 0xFFFECACA);
+        card2.addView(tv(getString(R.string.perm_title), 17f, 0xFF991B1B, true));
+        TextView permBody = tv(getString(R.string.perm_body), 14f, 0xFF7F1D1D, false);
+        permBody.setPadding(0, dpi(6), 0, 0);
+        card2.addView(permBody);
+        Button button2 = UiKit.INSTANCE.button(mainActivity, getString(R.string.enable_in_settings), true);
+        button2.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View view) { MainActivity.buildUi$lambda$3(MainActivity.this, view); }
         });
         card2.addView(button2);
-        LinearLayout linearLayout6 = this.content;
-        if (linearLayout6 == null) {
-            Intrinsics.throwUninitializedPropertyAccessException("content");
-            linearLayout6 = null;
-        }
-        LinearLayout linearLayout7 = card2;
-        linearLayout6.addView(linearLayout7);
-        this.permCard = linearLayout7;
-        LinearLayout card3 = UiKit.INSTANCE.card(mainActivity);
-        UiKit uiKit8 = UiKit.INSTANCE;
-        String string8 = getString(R.string.last_result);
-        Intrinsics.checkNotNullExpressionValue(string8, "getString(...)");
-        card3.addView(UiKit.text$default(uiKit8, mainActivity, string8, 16.0f, 700, null, 16, null));
-        LinearLayout linearLayout8 = new LinearLayout(mainActivity);
-        linearLayout8.setOrientation(1);
-        card3.addView(linearLayout8);
-        UiKit uiKit9 = UiKit.INSTANCE;
-        String string9 = getString(R.string.view_details);
-        Intrinsics.checkNotNullExpressionValue(string9, "getString(...)");
-        Button button3 = uiKit9.button(mainActivity, string9, false);
-        button3.setOnClickListener(new View.OnClickListener() { // from class: ir.tripanalyzer.app.MainActivity$$ExternalSyntheticLambda2
-            @Override // android.view.View.OnClickListener
-            public final void onClick(View view) {
-                MainActivity.buildUi$lambda$4(MainActivity.this, view);
-            }
+        this.content.addView(card2);
+        this.permCard = card2;
+
+        // ── آخرین نتیجه ──
+        LinearLayout card3 = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
+        addHeaderTitle(card3, getString(R.string.last_result));
+        LinearLayout lastHost = new LinearLayout(mainActivity);
+        lastHost.setOrientation(LinearLayout.VERTICAL);
+        card3.addView(lastHost);
+        Button button3 = UiKit.INSTANCE.button(mainActivity, getString(R.string.view_details), false);
+        button3.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View view) { MainActivity.buildUi$lambda$4(MainActivity.this, view); }
         });
         card3.addView(button3);
-        LinearLayout linearLayout9 = this.content;
-        if (linearLayout9 == null) {
-            Intrinsics.throwUninitializedPropertyAccessException("content");
-            linearLayout9 = null;
-        }
-        linearLayout9.addView(card3);
-        this.lastBody = linearLayout8;
+        this.content.addView(card3);
+        this.lastBody = lastHost;
 
+        // ── میانگین ساعتی ──
         try {
             final MainActivity act = mainActivity;
-            RaidoDataStore.DashboardHourly snap = RaidoDataStore.INSTANCE.snapshotDashboard(act);
-            android.widget.LinearLayout avgCard = new android.widget.LinearLayout(act);
-            avgCard.setOrientation(android.widget.LinearLayout.VERTICAL);
-            avgCard.setPadding(28, 28, 28, 28);
-            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-            bg.setCornerRadius(28f);
-            bg.setColor(0xFFFFFFFF);
-            bg.setStroke(2, 0xFFE2E8F0);
-            avgCard.setBackground(bg);
-            android.widget.TextView avgTitle = new android.widget.TextView(act);
-            avgTitle.setText("میانگین ساعتی درخواست‌ها");
-            avgTitle.setTextSize(16f);
-            avgTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-            avgTitle.setTextColor(0xFF0F172A);
-            avgCard.addView(avgTitle);
-            android.widget.TextView avgSub = new android.widget.TextView(act);
-            avgSub.setTextSize(13f);
-            avgSub.setTextColor(0xFF64748B);
-            avgSub.setPadding(0, 16, 0, 0);
+            LinearLayout avgCard = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
+            avgCard.addView(tv("میانگین ساعتی درخواست‌ها", 17f, 0xFF0F172A, true));
+            TextView avgSub = tv("", 14f, 0xFF475569, false);
+            avgSub.setLineSpacing(dpi(3), 1f);
+            avgSub.setPadding(0, dpi(10), 0, 0);
             avgCard.addView(avgSub);
             this.avgHourlyBody = avgSub;
             fillAvgHourlyBody(act, avgSub);
+            avgCard.setClickable(true);
             avgCard.setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(android.view.View v) {
-                    android.content.Intent i = new android.content.Intent(act, ReportsActivity.class);
+                @Override public void onClick(View v) {
+                    Intent i = new Intent(act, ReportsActivity.class);
                     i.putExtra(ReportsActivity.EXTRA_TAB, 2);
                     act.startActivity(i);
                 }
             });
-            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(-1, -2);
-            lp.topMargin = 24;
-            linearLayout9.addView(avgCard, lp);
+            this.content.addView(avgCard);
         } catch (Throwable ignored) {}
 
-        // —— درآمد قبول‌شده + بنزین/استهلاک GPS (فاز بعداً — الان فعال)
+        // ── درآمد قبول‌شده، بنزین/استهلاک، روند، بنچمارک ──
         try {
             final MainActivity act2 = mainActivity;
-            LinearLayout accCard = new LinearLayout(act2);
-            accCard.setOrientation(LinearLayout.VERTICAL);
-            accCard.setPadding(28, 28, 28, 28);
-            android.graphics.drawable.GradientDrawable bgA = new android.graphics.drawable.GradientDrawable();
-            bgA.setCornerRadius(28f);
-            bgA.setColor(0xFFFFFFFF);
-            bgA.setStroke(2, 0xFFA7F3D0);
-            accCard.setBackground(bgA);
-            TextView accTitle = new TextView(act2);
-            accTitle.setText("درآمد ساعتی قبول‌شده‌ها");
-            accTitle.setTextSize(14f);
-            accTitle.setTypeface(null, android.graphics.Typeface.BOLD);
-            accTitle.setTextColor(0xFF64748B);
-            accCard.addView(accTitle);
-            TextView accVal = new TextView(act2);
-            accVal.setTextSize(20f);
-            accVal.setTypeface(null, android.graphics.Typeface.BOLD);
-            accVal.setTextColor(0xFF047857);
-            accVal.setPadding(0, 8, 0, 0);
+            LinearLayout accCard = dashCard(0xFFECFDF5, 0xFFA7F3D0);
+            accCard.addView(tv("درآمد ساعتی قبول‌شده‌ها", 14f, 0xFF047857, true));
+            TextView accVal = tv("", 20f, 0xFF047857, true);
+            accVal.setLineSpacing(dpi(3), 1f);
+            accVal.setPadding(0, dpi(8), 0, 0);
             this.acceptedIncomeLabel = accVal;
             accCard.addView(accVal);
             accCard.setClickable(true);
@@ -688,88 +691,47 @@ public final class MainActivity extends BaseActivity {
                     act2.startActivity(i);
                 }
             });
-            LinearLayout.LayoutParams lpA = new LinearLayout.LayoutParams(-1, -2);
-            lpA.topMargin = 24;
-            linearLayout9.addView(accCard, lpA);
+            this.content.addView(accCard);
 
             LinearLayout costRow = new LinearLayout(act2);
             costRow.setOrientation(LinearLayout.HORIZONTAL);
-            costRow.setPadding(0, 8, 0, 0);
-            // fuel box
-            LinearLayout fuelBox = new LinearLayout(act2);
-            fuelBox.setOrientation(LinearLayout.VERTICAL);
-            fuelBox.setPadding(20, 16, 20, 16);
-            android.graphics.drawable.GradientDrawable bgF = new android.graphics.drawable.GradientDrawable();
-            bgF.setCornerRadius(20f); bgF.setColor(0xFFF8FAFC); bgF.setStroke(2, 0xFFE2E8F0);
-            fuelBox.setBackground(bgF);
-            TextView fCap = new TextView(act2); fCap.setText("بنزین واقعی GPS"); fCap.setTextSize(11f); fCap.setTextColor(0xFF64748B);
-            fuelBox.addView(fCap);
-            TextView fVal = new TextView(act2); fVal.setText("—"); fVal.setTextSize(16f); fVal.setTypeface(null, android.graphics.Typeface.BOLD); fVal.setTextColor(0xFF0F172A);
-            this.gpsFuelLabel = fVal; fuelBox.addView(fVal);
-            LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(0, -2, 1f); hp.setMargins(0, 0, 8, 0);
+            TextView[] fo = new TextView[1];
+            TextView[] dpo = new TextView[1];
+            LinearLayout fuelBox = costTile("بنزین واقعی GPS", fo);
+            LinearLayout depBox = costTile("استهلاک واقعی GPS", dpo);
+            this.gpsFuelLabel = fo[0];
+            this.gpsDepLabel = dpo[0];
+            LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(0, -2, 1f);
+            hp.setMargins(0, 0, dpi(5), 0);
             costRow.addView(fuelBox, hp);
-            // dep box
-            LinearLayout depBox = new LinearLayout(act2);
-            depBox.setOrientation(LinearLayout.VERTICAL);
-            depBox.setPadding(20, 16, 20, 16);
-            android.graphics.drawable.GradientDrawable bgDep = new android.graphics.drawable.GradientDrawable();
-            bgDep.setCornerRadius(20f); bgDep.setColor(0xFFF8FAFC); bgDep.setStroke(2, 0xFFE2E8F0);
-            depBox.setBackground(bgDep);
-            TextView dCap = new TextView(act2); dCap.setText("استهلاک واقعی GPS"); dCap.setTextSize(11f); dCap.setTextColor(0xFF64748B);
-            depBox.addView(dCap);
-            TextView dVal = new TextView(act2); dVal.setText("—"); dVal.setTextSize(16f); dVal.setTypeface(null, android.graphics.Typeface.BOLD); dVal.setTextColor(0xFF0F172A);
-            this.gpsDepLabel = dVal; depBox.addView(dVal);
-            LinearLayout.LayoutParams hp2 = new LinearLayout.LayoutParams(0, -2, 1f); hp2.setMargins(8, 0, 0, 0);
+            LinearLayout.LayoutParams hp2 = new LinearLayout.LayoutParams(0, -2, 1f);
+            hp2.setMargins(dpi(5), 0, 0, 0);
             costRow.addView(depBox, hp2);
             LinearLayout.LayoutParams lpC = new LinearLayout.LayoutParams(-1, -2);
-            lpC.topMargin = 12;
-            linearLayout9.addView(costRow, lpC);
+            lpC.bottomMargin = dpi(14);
+            this.content.addView(costRow, lpC);
 
-            // روند ۷ روز
-            LinearLayout trendCard = new LinearLayout(act2);
-            trendCard.setOrientation(LinearLayout.VERTICAL);
-            trendCard.setPadding(28, 24, 28, 24);
-            android.graphics.drawable.GradientDrawable bgT = new android.graphics.drawable.GradientDrawable();
-            bgT.setCornerRadius(28f); bgT.setColor(0xFFFFFFFF); bgT.setStroke(2, 0xFFE2E8F0);
-            trendCard.setBackground(bgT);
-            TextView tTitle = new TextView(act2);
-            tTitle.setText("روند میانگین ساعتی · ۷ روز");
-            tTitle.setTextSize(13f); tTitle.setTypeface(null, android.graphics.Typeface.BOLD); tTitle.setTextColor(0xFF64748B);
-            trendCard.addView(tTitle);
+            LinearLayout trendCard = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
+            trendCard.addView(tv("روند میانگین ساعتی · ۷ روز", 15f, 0xFF334155, true));
             LinearLayout trendHost = new LinearLayout(act2);
             trendHost.setOrientation(LinearLayout.VERTICAL);
-            trendHost.setPadding(0, 12, 0, 0);
+            trendHost.setPadding(0, dpi(12), 0, 0);
             this.chartTrendHost = trendHost;
             trendCard.addView(trendHost);
-            LinearLayout.LayoutParams lpT = new LinearLayout.LayoutParams(-1, -2);
-            lpT.topMargin = 24;
-            linearLayout9.addView(trendCard, lpT);
+            this.content.addView(trendCard);
 
-            // بنچمارک
-            LinearLayout benchCard = new LinearLayout(act2);
-            benchCard.setOrientation(LinearLayout.VERTICAL);
-            benchCard.setPadding(28, 24, 28, 24);
-            android.graphics.drawable.GradientDrawable bgB = new android.graphics.drawable.GradientDrawable();
-            bgB.setCornerRadius(28f); bgB.setColor(0xFFFFFFFF); bgB.setStroke(2, 0xFFE2E8F0);
-            benchCard.setBackground(bgB);
-            TextView bTitle = new TextView(act2);
-            bTitle.setText("این ساعت در یک نگاه");
-            bTitle.setTextSize(13f); bTitle.setTypeface(null, android.graphics.Typeface.BOLD); bTitle.setTextColor(0xFF64748B);
-            benchCard.addView(bTitle);
+            LinearLayout benchCard = dashCard(0xFFFFFFFF, 0xFFE2E8F0);
+            benchCard.addView(tv("این ساعت در یک نگاه", 15f, 0xFF334155, true));
             LinearLayout benchHost = new LinearLayout(act2);
             benchHost.setOrientation(LinearLayout.VERTICAL);
-            benchHost.setPadding(0, 8, 0, 0);
+            benchHost.setPadding(0, dpi(8), 0, 0);
             this.benchmarkHost = benchHost;
             benchCard.addView(benchHost);
-            TextView bHint = new TextView(act2);
-            bHint.setText("اعداد به هزار تومان · فقط نمایش");
-            bHint.setTextSize(11f); bHint.setTextColor(0xFF94A3B8); bHint.setPadding(0, 8, 0, 0);
+            TextView bHint = tv("اعداد به هزار تومان · فقط نمایش", 12f, 0xFF94A3B8, false);
+            bHint.setPadding(0, dpi(8), 0, 0);
             benchCard.addView(bHint);
-            LinearLayout.LayoutParams lpB = new LinearLayout.LayoutParams(-1, -2);
-            lpB.topMargin = 16;
-            linearLayout9.addView(benchCard, lpB);
+            this.content.addView(benchCard);
         } catch (Throwable ignored) {}
-        // منوی صفحات از طریق آیکون همبرگری بالای داشبورد در دسترس است
     }
 
     /* JADX INFO: Access modifiers changed from: private */
@@ -889,7 +851,7 @@ public final class MainActivity extends BaseActivity {
             Ui ui = Ui.INSTANCE;
             Double hourlyIncome = component1.getHourlyIncome();
             objArr[0] = ui.money(hourlyIncome != null ? hourlyIncome.doubleValue() : 0.0d);
-            TextView text = uiKit3.text(mainActivity, res.str(R.string.hourly_income_format, objArr), 24.0f, 900, Integer.valueOf(Ui.INSTANCE.verdictColor(component1.getVerdict())));
+            TextView text = uiKit3.text(mainActivity, res.str(R.string.hourly_income_format, objArr), 28.0f, 900, Integer.valueOf(Ui.INSTANCE.verdictColor(component1.getVerdict())));
             LinearLayout linearLayout5 = this.lastBody;
             if (linearLayout5 != null) {
                 linearLayout5.addView(text);
@@ -904,7 +866,7 @@ public final class MainActivity extends BaseActivity {
                 objArr2[1] = Ui.INSTANCE.ago(longValue, System.currentTimeMillis());
                 String string3 = getString(R.string.net_income_ago_format, objArr2);
                 Intrinsics.checkNotNullExpressionValue(string3, "getString(...)");
-                linearLayout6.addView(UiKit.text$default(uiKit4, mainActivity, string3, 13.0f, 400, null, 16, null));
+                linearLayout6.addView(UiKit.text$default(uiKit4, mainActivity, string3, 14.0f, 400, null, 16, null));
                 return;
             }
             return;
@@ -927,17 +889,21 @@ public final class MainActivity extends BaseActivity {
         double km = 0;
         try { km = GpsTracker.INSTANCE.getKm(this); } catch (Throwable ignored) {}
         if (!on) {
-            if (d != null) d.setText("GPS خاموش");
-            if (s != null) s.setText("GPS خاموش");
-            if (gpsFuelLabel != null) gpsFuelLabel.setText("GPS خاموش");
-            if (gpsDepLabel != null) gpsDepLabel.setText("GPS خاموش");
+            if (d != null) d.setText("—");
+            if (s != null) s.setText("—");
+            if (distUnit != null) distUnit.setText("GPS خاموش");
+            if (speedUnit != null) speedUnit.setText("GPS خاموش");
+            if (gpsFuelLabel != null) gpsFuelLabel.setText("خاموش");
+            if (gpsDepLabel != null) gpsDepLabel.setText("خاموش");
         } else {
-            if (d != null) d.setText((((long) (km * 10.0d)) / 10.0d) + " km");
+            if (d != null) d.setText(String.format(java.util.Locale.US, "%.1f", km));
+            if (distUnit != null) distUnit.setText("km");
             if (s != null) {
                 double spd = GpsTracker.INSTANCE.getAvgSpeedKmh(this);
                 if (spd < 0) s.setText("—");
-                else s.setText(String.format(java.util.Locale.US, "%.1f km/h", spd));
+                else s.setText(String.format(java.util.Locale.US, "%.1f", spd));
             }
+            if (speedUnit != null) speedUnit.setText("km/h");
             // بنزین و استهلاک واقعی از مسافت GPS (نمایش؛ نه تحلیل)
             try {
                 EngineSettings es = Store.INSTANCE.settings(this);
@@ -1010,7 +976,7 @@ public final class MainActivity extends BaseActivity {
 
     private final GradientDrawable pillBg(int color) {
         GradientDrawable gradientDrawable = new GradientDrawable();
-        gradientDrawable.setCornerRadius(UiKit.INSTANCE.dp(this, 12));
+        gradientDrawable.setCornerRadius(UiKit.INSTANCE.dp(this, 16));
         gradientDrawable.setColor(color);
         return gradientDrawable;
     }
@@ -1028,30 +994,31 @@ public final class MainActivity extends BaseActivity {
             if (tipCollapseRunnable != null) tipHandler.removeCallbacks(tipCollapseRunnable);
             tipExpanded = true;
             if (tipBody != null) tipBody.setVisibility(View.VISIBLE);
-            if (tipCard != null) tipCard.setVisibility(View.VISIBLE);
+            if (tipWarnBtn != null) tipWarnBtn.setText("▴");
             tipCollapseRunnable = new Runnable() {
-                @Override public void run() {
-                    collapseTipBanner();
-                }
+                @Override public void run() { collapseTipBanner(); }
             };
-            tipHandler.postDelayed(tipCollapseRunnable, 2L * 60L * 1000L);
+            tipHandler.postDelayed(tipCollapseRunnable, 12L * 1000L);
         } catch (Throwable ignored) {}
     }
 
     private void collapseTipBanner() {
         try {
+            if (tipCollapseRunnable != null) tipHandler.removeCallbacks(tipCollapseRunnable);
             tipExpanded = false;
             if (tipBody != null) tipBody.setVisibility(View.GONE);
+            if (tipWarnBtn != null) tipWarnBtn.setText("▾");
         } catch (Throwable ignored) {}
     }
 
     private void expandTipBanner() {
-        try {
-            tipExpanded = true;
-            if (tipBody != null) tipBody.setVisibility(View.VISIBLE);
-            if (tipCard != null) tipCard.setVisibility(View.VISIBLE);
-            scheduleTipCollapse();
-        } catch (Throwable ignored) {}
+        scheduleTipCollapse();
+    }
+
+    @Override
+    protected void onDestroy() {
+        try { if (tipCollapseRunnable != null) tipHandler.removeCallbacks(tipCollapseRunnable); } catch (Throwable ignored) {}
+        super.onDestroy();
     }
 
 }
