@@ -16,6 +16,34 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure MainActivity is full (restore if shell/placeholder)
+        run: |
+          set -e
+          F=app/src/main/java/ir/tripanalyzer/app/MainActivity.java
+          BYTES=$(wc -c < "$F")
+          echo "MainActivity bytes=$BYTES"
+          if [ "$BYTES" -lt 10000 ] || grep -qE 'PLACEHOLDER|نسخه UI در حال' "$F"; then
+            echo "Restoring MainActivity from good commit 9ce568d..."
+            git show 9ce568d283dd94612839ed65ad63554e3ad624d7:"$F" > "$F"
+            python3 -c "
+from pathlib import Path
+p = Path('app/src/main/java/ir/tripanalyzer/app/MainActivity.java')
+c = p.read_text(encoding='utf-8')
+assert 'class MainActivity' in c and 'PLACEHOLDER' not in c
+c = c.replace('ic.setTextColor(selected ? 0xFF0F172A : 0xFF64748B);', 'ic.setTextColor(selected ? UiKit.BRAND : 0xFF82908B);')
+c = c.replace('lb.setTextColor(selected ? 0xFF0F172A : 0xFF64748B);', 'lb.setTextColor(selected ? UiKit.BRAND : 0xFF82908B);')
+c = c.replace('pill.setColor(0xFFF1F5F9);', 'pill.setColor(0xFFE5F4EB);')
+p.write_text(c, encoding='utf-8')
+print('restored', len(c), 'BRAND', c.count('UiKit.BRAND'))
+"
+          else
+            echo "MainActivity looks full; leave as-is"
+          fi
+          wc -c "$F"
+          grep -n 'class MainActivity\|UiKit.BRAND\|buildBottomNav' "$F" | head -10
 
       - uses: actions/setup-java@v4
         with:
