@@ -74,63 +74,136 @@ public final class LoginActivity extends BaseActivity {
         super.onDestroy();
     }
 
+    private GradientDrawable shp(int fill, int radiusDp, int stroke) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(fill);
+        g.setCornerRadius(dp(radiusDp));
+        if (stroke != 0) g.setStroke(Math.max(1, dp(1)), stroke);
+        return g;
+    }
+
+    /** ردیف مرحله: آیکون گرد + شمارهٔ کوچک + عنوان و توضیح */
+    private LinearLayout stepRow(int icon, int tint, int accent, String num, String title, String desc) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        android.widget.FrameLayout fl = new android.widget.FrameLayout(this);
+        android.widget.ImageView iv = new android.widget.ImageView(this);
+        iv.setImageResource(icon);
+        iv.setColorFilter(accent);
+        iv.setPadding(dp(14), dp(14), dp(14), dp(14));
+        GradientDrawable circ = new GradientDrawable();
+        circ.setShape(GradientDrawable.OVAL);
+        circ.setColor(tint);
+        iv.setBackground(circ);
+        fl.addView(iv, new android.widget.FrameLayout.LayoutParams(dp(54), dp(54)));
+        TextView badge = tv(num, 11f, Color.WHITE, true);
+        badge.setGravity(Gravity.CENTER);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor(accent);
+        badge.setBackground(bg);
+        android.widget.FrameLayout.LayoutParams blp = new android.widget.FrameLayout.LayoutParams(dp(22), dp(22));
+        blp.gravity = Gravity.TOP | Gravity.END;
+        fl.addView(badge, blp);
+        row.addView(fl, new LinearLayout.LayoutParams(dp(58), dp(58)));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPaddingRelative(dp(14), 0, 0, 0);
+        col.addView(tv(title, 16f, 0xFF0F172A, true));
+        TextView d = tv(desc, 13.5f, 0xFF475569, false);
+        d.setLineSpacing(dp(3), 1f);
+        d.setPadding(0, dp(4), 0, 0);
+        col.addView(d);
+        row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        return row;
+    }
+
+    private LinearLayout stepCard(int tint, int edge) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setPadding(dp(16), dp(16), dp(16), dp(16));
+        c.setBackground(shp(Color.WHITE, 22, edge));
+        try { c.setElevation(dp(2)); } catch (Throwable ignored) {}
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.bottomMargin = dp(14);
+        c.setLayoutParams(lp);
+        return c;
+    }
+
     private void buildUi() {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
-        shell.setBackgroundColor(0xFFF0FDFA);
+        shell.setBackgroundColor(0xFFF1F5F9);
 
+        // ── هدر با گرادیان آبی برند رایدو ──
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.VERTICAL);
-        top.setPadding(dp(18), dp(26), dp(18), dp(26));
-        top.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF0B3D3A, 0xFF134E4A, 0xFF0F766E}));
+        top.setPadding(dp(22), dp(34), dp(22), dp(30));
+        float rr = dp(28);
+        GradientDrawable hg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF0F172A, 0xFF1E3A8A, 0xFF2563EB});
+        hg.setCornerRadii(new float[]{0, 0, 0, 0, rr, rr, rr, rr});
+        top.setBackground(hg);
         top.addView(tv("RAIDO · ورود", 12f, 0xCCFFFFFF, false));
-        TextView h1 = tv("ورود با تلگرام", 22f, Color.WHITE, true);
-        h1.setPadding(0, dp(8), 0, 0);
-        top.addView(h1);
-        TextView sub = tv("فقط یک‌بار · شمارهٔ موبایلت در ربات تلگرام تأیید می‌شود", 13f, 0xE6FFFFFF, false);
-        sub.setPadding(0, dp(8), 0, 0);
+        LinearLayout titleRow = new LinearLayout(this);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        titleRow.setPadding(0, dp(12), 0, 0);
+        android.widget.ImageView tIc = new android.widget.ImageView(this);
+        tIc.setImageResource(R.drawable.ic_lg_send);
+        tIc.setColorFilter(0xFF2563EB);
+        tIc.setPadding(dp(10), dp(10), dp(10), dp(10));
+        GradientDrawable tc = new GradientDrawable();
+        tc.setShape(GradientDrawable.OVAL);
+        tc.setColor(0xFFFFFFFF);
+        tIc.setBackground(tc);
+        titleRow.addView(tIc, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        TextView h1 = tv("ورود با تلگرام", 24f, Color.WHITE, true);
+        h1.setPaddingRelative(dp(12), 0, 0, 0);
+        titleRow.addView(h1);
+        top.addView(titleRow);
+        TextView sub = tv("فقط یک‌بار · شمارهٔ موبایلت در ربات تلگرام تأیید می‌شود", 14f, 0xE6FFFFFF, false);
+        sub.setPadding(0, dp(10), 0, 0);
         top.addView(sub);
         shell.addView(top);
 
         ScrollView scroll = new ScrollView(this);
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(dp(14), dp(16), dp(14), dp(28));
+        body.setPadding(dp(16), dp(20), dp(16), dp(28));
 
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(15), dp(16), dp(15), dp(16));
-        GradientDrawable cg = new GradientDrawable();
-        cg.setColor(Color.WHITE);
-        cg.setCornerRadius(dp(20));
-        cg.setStroke(dp(1), 0xFF99F6E4);
-        card.setBackground(cg);
-
-        TextView steps = tv("۱) دکمهٔ زیر را بزن تا تلگرام باز شود\n"
-                + "۲) در ربات «Start» و بعد «تأیید شمارهٔ من» را بزن\n"
-                + "۳) به رایدو برگرد؛ خودکار وارد می‌شوی", 14f, 0xFF0F172A, false);
-        steps.setLineSpacing(0, 1.3f);
-        card.addView(steps);
+        // ── کارت ۱: دکمهٔ ورود ──
+        LinearLayout card = stepCard(0xFFEFF6FF, 0xFFBFDBFE);
+        card.addView(stepRow(R.drawable.ic_lg_send, 0xFFEFF6FF, 0xFF2563EB, "۱",
+                "دکمهٔ زیر را بزن تا تلگرام باز شود",
+                "در ربات «Start» و بعد «تأیید شمارهٔ من» را بزن؛ سپس به رایدو برگرد."));
 
         loginBtn = new Button(this);
         loginBtn.setText("ورود با تلگرام");
         loginBtn.setAllCaps(false);
-        loginBtn.setTextSize(15f);
+        loginBtn.setTextSize(16f);
         loginBtn.setTypeface(Typeface.DEFAULT_BOLD);
         loginBtn.setTextColor(Color.WHITE);
         GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xFF14B8A6, 0xFF0F766E});
-        bg.setCornerRadius(dp(14));
+                new int[]{0xFF3B82F6, 0xFF2563EB});
+        bg.setCornerRadius(dp(16));
         loginBtn.setBackground(bg);
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, -2);
+        try {
+            android.graphics.drawable.Drawable ic = getResources().getDrawable(R.drawable.ic_lg_send, getTheme()).mutate();
+            ic.setTint(Color.WHITE);
+            ic.setBounds(0, 0, dp(20), dp(20));
+            loginBtn.setCompoundDrawablesRelative(ic, null, null, null);
+            loginBtn.setCompoundDrawablePadding(dp(10));
+        } catch (Throwable ignored) {}
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, dp(56));
         blp.topMargin = dp(16);
         loginBtn.setLayoutParams(blp);
-        loginBtn.setPadding(dp(12), dp(14), dp(12), dp(14));
+        loginBtn.setPadding(dp(24), 0, dp(24), 0);
         loginBtn.setOnClickListener(v -> startLogin());
         card.addView(loginBtn);
 
-        statusTv = tv("", 13f, 0xFF0F766E, false);
+        statusTv = tv("", 14f, 0xFF1D4ED8, false);
         statusTv.setGravity(Gravity.CENTER);
         statusTv.setPadding(0, dp(12), 0, 0);
         card.addView(statusTv);
@@ -140,13 +213,21 @@ public final class LoginActivity extends BaseActivity {
         diagTv.setTextDirection(View.TEXT_DIRECTION_LTR);
         diagTv.setPadding(0, dp(6), 0, 0);
         card.addView(diagTv);
-
         body.addView(card);
 
-        TextView note = tv("شمارهٔ تو فقط برای شناسایی اشتراک ذخیره می‌شود.\nتلگرام روی گوشی لازم است (در صورت فیلتر، با VPN).",
-                12f, 0xFF64748B, false);
-        note.setPadding(dp(4), dp(14), dp(4), 0);
-        body.addView(note);
+        // ── کارت ۲: امنیت و دسترسی ──
+        LinearLayout c2 = stepCard(0xFFF0FDF4, 0xFFE2E8F0);
+        c2.addView(stepRow(R.drawable.ic_lg_shield, 0xFFDCFCE7, 0xFF16A34A, "۲",
+                "امنیت و دسترسی",
+                "شمارهٔ تو فقط برای شناسایی اشتراک ذخیره می‌شود. تلگرام روی گوشی لازم است (در صورت فیلتر، با VPN)."));
+        body.addView(c2);
+
+        // ── کارت ۳: شروع سریع ──
+        LinearLayout c3 = stepCard(0xFFFFFBEB, 0xFFE2E8F0);
+        c3.addView(stepRow(R.drawable.ic_lg_bulb, 0xFFFEF3C7, 0xFFD97706, "۳",
+                "شروع سریع",
+                "پس از تأیید، خودکار وارد می‌شوی و می‌توانی تحلیل سفرهای خود را آغاز کنی."));
+        body.addView(c3);
 
         scroll.addView(body);
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
