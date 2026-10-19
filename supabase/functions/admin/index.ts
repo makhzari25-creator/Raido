@@ -54,10 +54,12 @@ Deno.serve(async (req) => {
   }
 
   if (action === "users") {
-    const q = String(body.q ?? "").replace(/\D/g, "");
-    let query = db.from("users").select("id, phone, created_at, last_seen, app_version, device_model, banned, ban_reason, subscriptions(plan,is_premium,expires_at,trial_used)")
+    const qraw = String(body.q ?? "").trim().toLowerCase();
+    const q = qraw.includes("@") ? "" : qraw.replace(/\D/g, "");
+    let query = db.from("users").select("id, phone, email, contact_phone, created_at, last_seen, app_version, device_model, banned, ban_reason, subscriptions(plan,is_premium,expires_at,trial_used)")
       .order("created_at", { ascending: false }).limit(50);
-    if (q) query = query.like("phone", `%${q}%`);
+    if (q) query = query.or(`phone.like.%${q}%,contact_phone.like.%${q}%`);
+    else if (qraw.includes("@") && /^[a-z0-9@._+-]+$/.test(qraw)) query = query.like("email", `%${qraw}%`);
     const { data, error } = await query;
     if (error) return json({ error: "server" }, 500);
     return json({ users: data });

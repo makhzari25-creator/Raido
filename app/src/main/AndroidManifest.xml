@@ -35,7 +35,14 @@
         <activity android:name=".TripEditActivity" android:exported="false"/>
         <activity android:name=".TextTestActivity" android:exported="false"/>
         <activity android:name=".PrivacyActivity" android:exported="false"/>
-        <activity android:name=".LoginActivity" android:exported="false"/>
+        <activity android:name=".LoginActivity" android:exported="true" android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="raido" android:host="login-done"/>
+            </intent-filter>
+        </activity>
         <activity android:name=".ActivationActivity" android:exported="false"/>
         <activity android:name=".SubscriptionActivity" android:exported="false"/>
         <activity

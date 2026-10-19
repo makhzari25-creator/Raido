@@ -31,6 +31,9 @@ public final class LoginActivity extends BaseActivity {
     private TextView statusTv;
     private TextView diagTv;
     private Button loginBtn;
+    private Button googleBtn;
+    private android.widget.EditText emailEt;
+    private android.widget.EditText phoneEt;
     private final AtomicBoolean polling = new AtomicBoolean(false);
     private volatile boolean alive = true;
 
@@ -63,8 +66,25 @@ public final class LoginActivity extends BaseActivity {
         String code = sp.getString("code", null);
         long at = sp.getLong("at", 0L);
         if (code != null && System.currentTimeMillis() - at < TTL_MS && !LicenseStore.INSTANCE.isLoggedIn(this)) {
-            if (statusTv != null) statusTv.setText("منتظر تأیید در تلگرام…");
+            if (statusTv != null) statusTv.setText("منتظر تأیید ورود…");
             startPolling(code);
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        Uri d = intent == null ? null : intent.getData();
+        if (d != null && "0".equals(d.getQueryParameter("ok")) && statusTv != null) {
+            String e = String.valueOf(d.getQueryParameter("e"));
+            String m = "denied".equals(e) ? "ورود با گوگل لغو شد"
+                    : "unverified".equals(e) ? "ایمیل گوگل تأیید‌شده نیست"
+                    : "expired".equals(e) ? "درخواست منقضی شد؛ دوباره امتحان کن"
+                    : "خطا در ورود با گوگل؛ دوباره امتحان کن";
+            getSharedPreferences(P, Context.MODE_PRIVATE).edit().clear().apply();
+            statusTv.setText(m);
+            busy(false);
         }
     }
 
@@ -159,11 +179,11 @@ public final class LoginActivity extends BaseActivity {
         tc.setColor(0xFFFFFFFF);
         tIc.setBackground(tc);
         titleRow.addView(tIc, new LinearLayout.LayoutParams(dp(42), dp(42)));
-        TextView h1 = tv("ورود با تلگرام", 24f, Color.WHITE, true);
+        TextView h1 = tv("ورود به رایدو", 24f, Color.WHITE, true);
         h1.setPaddingRelative(dp(12), 0, 0, 0);
         titleRow.addView(h1);
         top.addView(titleRow);
-        TextView sub = tv("فقط یک‌بار · شمارهٔ موبایلت در ربات تلگرام تأیید می‌شود", 14f, 0xE6FFFFFF, false);
+        TextView sub = tv("با گوگل یا تلگرام · فقط یک‌بار وارد می‌شوی", 14f, 0xE6FFFFFF, false);
         sub.setPadding(0, dp(10), 0, 0);
         top.addView(sub);
         shell.addView(top);
@@ -173,11 +193,34 @@ public final class LoginActivity extends BaseActivity {
         body.setOrientation(LinearLayout.VERTICAL);
         body.setPadding(dp(16), dp(20), dp(16), dp(28));
 
-        // ── کارت ۱: دکمهٔ ورود ──
+        // ── کارت ۱: اطلاعات تماس + دو راه ورود ──
         LinearLayout card = stepCard(0xFFEFF6FF, 0xFFBFDBFE);
-        card.addView(stepRow(R.drawable.ic_lg_send, 0xFFEFF6FF, 0xFF2563EB, "۱",
-                "دکمهٔ زیر را بزن تا تلگرام باز شود",
-                "در ربات «Start» و بعد «تأیید شمارهٔ من» را بزن؛ سپس به رایدو برگرد."));
+        card.addView(tv("اطلاعات تماس", 16f, 0xFF0F172A, true));
+        TextView hint = tv("ایمیل و شمارهٔ موبایل برای پشتیبانی و جلوگیری از ثبت‌نام تکراری است.", 13f, 0xFF64748B, false);
+        hint.setPadding(0, dp(4), 0, dp(10));
+        card.addView(hint);
+        emailEt = field("ایمیل (اختیاری)", android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        card.addView(emailEt);
+        phoneEt = field("شمارهٔ موبایل (مثلاً ۰۹۱۲۳۴۵۶۷۸۹)", android.text.InputType.TYPE_CLASS_PHONE);
+        card.addView(phoneEt);
+
+        googleBtn = new Button(this);
+        googleBtn.setText("ورود با گوگل");
+        googleBtn.setAllCaps(false);
+        googleBtn.setTextSize(16f);
+        googleBtn.setTypeface(Typeface.DEFAULT_BOLD);
+        googleBtn.setTextColor(0xFF0F172A);
+        googleBtn.setBackground(shp(Color.WHITE, 16, 0xFFCBD5E1));
+        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(-1, dp(54));
+        glp.topMargin = dp(14);
+        googleBtn.setLayoutParams(glp);
+        googleBtn.setOnClickListener(v -> startGoogle());
+        card.addView(googleBtn);
+
+        TextView or = tv("یا", 13f, 0xFF94A3B8, false);
+        or.setGravity(Gravity.CENTER);
+        or.setPadding(0, dp(10), 0, dp(2));
+        card.addView(or);
 
         loginBtn = new Button(this);
         loginBtn.setText("ورود با تلگرام");
@@ -196,8 +239,8 @@ public final class LoginActivity extends BaseActivity {
             loginBtn.setCompoundDrawablesRelative(ic, null, null, null);
             loginBtn.setCompoundDrawablePadding(dp(10));
         } catch (Throwable ignored) {}
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, dp(56));
-        blp.topMargin = dp(16);
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, dp(54));
+        blp.topMargin = dp(6);
         loginBtn.setLayoutParams(blp);
         loginBtn.setPadding(dp(24), 0, dp(24), 0);
         loginBtn.setOnClickListener(v -> startLogin());
@@ -219,14 +262,14 @@ public final class LoginActivity extends BaseActivity {
         LinearLayout c2 = stepCard(0xFFF0FDF4, 0xFFE2E8F0);
         c2.addView(stepRow(R.drawable.ic_lg_shield, 0xFFDCFCE7, 0xFF16A34A, "۲",
                 "امنیت و دسترسی",
-                "شمارهٔ تو فقط برای شناسایی اشتراک ذخیره می‌شود. تلگرام روی گوشی لازم است (در صورت فیلتر، با VPN)."));
+                "اطلاعاتت فقط برای شناسایی اشتراک ذخیره می‌شود. ورود با تلگرام به تلگرام روی گوشی نیاز دارد (در صورت فیلتر، با VPN)."));
         body.addView(c2);
 
         // ── کارت ۳: شروع سریع ──
         LinearLayout c3 = stepCard(0xFFFFFBEB, 0xFFE2E8F0);
         c3.addView(stepRow(R.drawable.ic_lg_bulb, 0xFFFEF3C7, 0xFFD97706, "۳",
                 "شروع سریع",
-                "پس از تأیید، خودکار وارد می‌شوی و می‌توانی تحلیل سفرهای خود را آغاز کنی."));
+                "پس از تأیید (گوگل یا تلگرام) خودکار وارد می‌شوی و می‌توانی تحلیل سفرهای خود را آغاز کنی."));
         body.addView(c3);
 
         scroll.addView(body);
@@ -235,8 +278,85 @@ public final class LoginActivity extends BaseActivity {
         try { Fonts.INSTANCE.applyRecursive(shell); } catch (Throwable ignored) {}
     }
 
+    private android.widget.EditText field(String hint, int type) {
+        android.widget.EditText e = new android.widget.EditText(this);
+        e.setHint(hint);
+        e.setInputType(type);
+        e.setSingleLine(true);
+        e.setTextSize(15f);
+        e.setTextColor(0xFF0F172A);
+        e.setHintTextColor(0xFF94A3B8);
+        e.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        e.setPaddingRelative(dp(14), 0, dp(14), 0);
+        e.setBackground(shp(0xFFF8FAFC, 14, 0xFFE2E8F0));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(50));
+        lp.topMargin = dp(8);
+        e.setLayoutParams(lp);
+        return e;
+    }
+
+    private static String enDigits(String s) {
+        StringBuilder b = new StringBuilder();
+        for (char c : s.toCharArray()) {
+            if (c >= '\u06F0' && c <= '\u06F9') b.append((char) ('0' + (c - '\u06F0')));
+            else if (c >= '\u0660' && c <= '\u0669') b.append((char) ('0' + (c - '\u0660')));
+            else b.append(c);
+        }
+        return b.toString();
+    }
+
+    private void busy(boolean b) {
+        if (loginBtn != null) loginBtn.setEnabled(!b);
+        if (googleBtn != null) googleBtn.setEnabled(!b);
+    }
+
+    private void startGoogle() {
+        String phone = enDigits(phoneEt.getText().toString()).replaceAll("[\\s-]", "").replaceFirst("^(\\+98|0098|98)", "0");
+        String email = emailEt.getText().toString().trim();
+        if (!phone.matches("^09[0-9]{9}$")) { statusTv.setText("شمارهٔ موبایل را درست وارد کن (مثلاً ۰۹۱۲۳۴۵۶۷۸۹)"); return; }
+        if (!email.isEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            statusTv.setText("ایمیل معتبر نیست"); return;
+        }
+        busy(true);
+        statusTv.setText("در حال آماده‌سازی…");
+        final String ph = phone, em = email;
+        new Thread(() -> {
+            try {
+                JSONObject b = new JSONObject().put("device_fp", LicenseStore.INSTANCE.getDeviceFingerprint(this))
+                        .put("phone", ph).put("email", em);
+                JSONObject r = RaidoCloud.post("auth-google-start", b, null);
+                String code = r.optString("code");
+                String url = r.optString("url");
+                int h = r.optInt("_http");
+                if (h == 200 && code.length() == 16 && url.startsWith("https://accounts.google.com/")) {
+                    getSharedPreferences(P, Context.MODE_PRIVATE).edit()
+                            .putString("code", code).putLong("at", System.currentTimeMillis()).apply();
+                    runOnUiThread(() -> {
+                        statusTv.setText("منتظر تأیید گوگل…");
+                        try {
+                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                        } catch (Throwable e) {
+                            Toast.makeText(this, "مرورگر باز نشد", Toast.LENGTH_LONG).show();
+                        }
+                    });
+                    startPolling(code);
+                } else if (h == 503) {
+                    fail("ورود با گوگل هنوز فعال نشده؛ فعلاً با تلگرام وارد شو");
+                } else if (h == 429) {
+                    fail("تلاش زیاد؛ کمی بعد دوباره امتحان کن");
+                } else if (h == 400) {
+                    fail("اطلاعات واردشده معتبر نیست");
+                } else {
+                    fail("خطای سرور؛ دوباره امتحان کن");
+                }
+            } catch (Throwable t) {
+                fail("اتصال اینترنت را بررسی کن");
+            }
+        }, "raido-google").start();
+    }
+
     private void startLogin() {
-        loginBtn.setEnabled(false);
+        busy(true);
         statusTv.setText("در حال آماده‌سازی…");
         new Thread(() -> {
             try {
@@ -274,7 +394,7 @@ public final class LoginActivity extends BaseActivity {
     private void fail(String msg) {
         runOnUiThread(() -> {
             if (statusTv != null) statusTv.setText(msg);
-            if (loginBtn != null) loginBtn.setEnabled(true);
+            busy(false);
         });
     }
 
