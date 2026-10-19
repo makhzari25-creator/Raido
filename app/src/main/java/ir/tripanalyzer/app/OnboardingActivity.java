@@ -46,7 +46,22 @@ public final class OnboardingActivity extends BaseActivity {
         root.setBackgroundColor(0xFFF1F5F9);
 
         // ── هدر: تصویر جاده + پوشش گرادیان آبی برند ──
-        android.widget.FrameLayout hero = new android.widget.FrameLayout(this);
+        // ارتفاع هدر فقط از متن (آخرین فرزند) تعیین می‌شود؛ تصویر و پوشش هم‌اندازهٔ آن می‌شوند
+        android.widget.FrameLayout hero = new android.widget.FrameLayout(this) {
+            @Override protected void onMeasure(int wSpec, int hSpec) {
+                int width = View.MeasureSpec.getSize(wSpec);
+                int n = getChildCount();
+                View t = getChildAt(n - 1);
+                t.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                int height = t.getMeasuredHeight();
+                for (int i = 0; i < n - 1; i++) {
+                    getChildAt(i).measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                            View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY));
+                }
+                setMeasuredDimension(width, height);
+            }
+        };
         try {
             android.widget.ImageView road = new android.widget.ImageView(this);
             road.setImageResource(R.drawable.bg_road);
