@@ -26,7 +26,7 @@ import android.widget.Toast;
  */
 public final class SetupWizardActivity extends BaseActivity {
 
-    private static final int TEAL2 = 0xFF0F766E;
+    private static final int TEAL2 = 0xFF2563EB;
     private static final int PRIMARY = 0xFF2563EB;
     private static final int TEXT_DARK = 0xFF0F172A;
     private static final int TEXT_MUTED = 0xFF64748B;
@@ -79,15 +79,17 @@ public final class SetupWizardActivity extends BaseActivity {
     private void buildShell() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(0xFFF0FDFA);
+        root.setBackgroundColor(0xFFF1F5F9);
         root.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
 
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.VERTICAL);
-        header.setPadding(dp(18), dp(20), dp(18), dp(18));
+        header.setPadding(dp(22), dp(28), dp(22), dp(22));
+        float hr = dp(28);
         GradientDrawable hg = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{0xFF0B3D3A, 0xFF134E4A, 0xFF0F766E});
+                new int[]{0xFF0F172A, 0xFF1E3A8A, 0xFF2563EB});
+        hg.setCornerRadii(new float[]{0, 0, 0, 0, hr, hr, hr, hr});
         header.setBackground(hg);
 
         TextView brand = new TextView(this);
@@ -97,35 +99,35 @@ public final class SetupWizardActivity extends BaseActivity {
         header.addView(brand);
 
         headerTitle = new TextView(this);
-        headerTitle.setTextSize(20f);
+        headerTitle.setTextSize(24f);
         headerTitle.setTypeface(Typeface.DEFAULT_BOLD);
         headerTitle.setTextColor(Color.WHITE);
-        headerTitle.setPadding(0, dp(6), 0, 0);
+        headerTitle.setPadding(0, dp(10), 0, 0);
         header.addView(headerTitle);
 
         headerSub = new TextView(this);
-        headerSub.setTextSize(13f);
+        headerSub.setTextSize(14f);
         headerSub.setTextColor(0xE6FFFFFF);
         headerSub.setPadding(0, dp(6), 0, 0);
         header.addView(headerSub);
 
         progressHost = new LinearLayout(this);
         progressHost.setOrientation(LinearLayout.HORIZONTAL);
-        progressHost.setPadding(0, dp(14), 0, 0);
+        progressHost.setPadding(0, dp(18), 0, 0);
         header.addView(progressHost);
         root.addView(header);
 
         ScrollView scroll = new ScrollView(this);
         contentHost = new LinearLayout(this);
         contentHost.setOrientation(LinearLayout.VERTICAL);
-        contentHost.setPadding(dp(14), dp(16), dp(14), dp(20));
+        contentHost.setPadding(dp(16), dp(18), dp(16), dp(20));
         scroll.addView(contentHost);
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         LinearLayout btnRow = new LinearLayout(this);
         btnRow.setOrientation(LinearLayout.HORIZONTAL);
-        btnRow.setPadding(dp(14), dp(8), dp(14), dp(16));
-        btnRow.setBackgroundColor(0xFFF0FDFA);
+        btnRow.setPadding(dp(16), dp(10), dp(16), dp(18));
+        btnRow.setBackgroundColor(0xFFF1F5F9);
 
         btnSecondary = outlineButton("قبلی");
         btnSecondary.setOnClickListener(new View.OnClickListener() {
@@ -162,7 +164,7 @@ public final class SetupWizardActivity extends BaseActivity {
             View bar = new View(this);
             GradientDrawable g = new GradientDrawable();
             g.setCornerRadius(dp(99));
-            g.setColor(i <= step ? 0xFF5EEAD4 : 0x33FFFFFF);
+            g.setColor(i <= step ? 0xFF93C5FD : 0x33FFFFFF);
             bar.setBackground(g);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(5), 1f);
             if (i < 5) lp.setMargins(0, 0, dp(6), 0);
@@ -214,9 +216,9 @@ public final class SetupWizardActivity extends BaseActivity {
                 "رایدو عددها را حساب می‌کند و با سه رنگ راهنمایی می‌کند."));
         LinearLayout lights = new LinearLayout(this);
         lights.setOrientation(LinearLayout.HORIZONTAL);
-        lights.setPadding(0, dp(10), 0, 0);
-        lights.addView(tlChip("سبز · برو", 0xFFECFDF5, 0xFF059669));
-        lights.addView(tlChip("زرد · فکر کن", 0xFFFFFBEB, 0xFFD97706));
+        lights.setPadding(0, dp(14), 0, 0);
+        lights.addView(tlChip("سبز · برو", 0xFFECFDF5, 0xFF16A34A));
+        lights.addView(tlChip("زرد · فکر کن", 0xFFFEF9C3, 0xFFA16207));
         lights.addView(tlChip("قرمز · رد کن", 0xFFFEF2F2, 0xFFDC2626));
         c.addView(lights);
         contentHost.addView(c);
@@ -446,17 +448,17 @@ public final class SetupWizardActivity extends BaseActivity {
     private TextView stepPill(String t) {
         TextView v = new TextView(this);
         v.setText(t);
-        v.setTextSize(11f);
+        v.setTextSize(12f);
         v.setTypeface(Typeface.DEFAULT_BOLD);
-        v.setTextColor(TEAL2);
-        v.setPadding(dp(12), dp(5), dp(12), dp(5));
+        v.setTextColor(PRIMARY);
+        v.setPadding(dp(14), dp(6), dp(14), dp(6));
         GradientDrawable g = new GradientDrawable();
         g.setColor(Color.WHITE);
         g.setCornerRadius(dp(99));
-        g.setStroke(dp(1), 0xFF99F6E4);
+        g.setStroke(dp(1), 0xFFBFDBFE);
         v.setBackground(g);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-        lp.bottomMargin = dp(12);
+        lp.bottomMargin = dp(14);
         v.setLayoutParams(lp);
         return v;
     }
@@ -464,14 +466,15 @@ public final class SetupWizardActivity extends BaseActivity {
     private LinearLayout whiteCard(boolean hero) {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(dp(15), dp(16), dp(15), dp(16));
+        c.setPadding(dp(16), dp(16), dp(16), dp(16));
         GradientDrawable g = new GradientDrawable();
         g.setColor(Color.WHITE);
-        g.setCornerRadius(dp(20));
-        g.setStroke(dp(1), hero ? 0xFF99F6E4 : CARD_BORDER);
+        g.setCornerRadius(dp(22));
+        g.setStroke(dp(1), hero ? 0xFFBFDBFE : CARD_BORDER);
         c.setBackground(g);
+        try { c.setElevation(dp(2)); } catch (Throwable ignored) {}
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.bottomMargin = dp(12);
+        lp.bottomMargin = dp(14);
         c.setLayoutParams(lp);
         return c;
     }
@@ -479,31 +482,29 @@ public final class SetupWizardActivity extends BaseActivity {
     private LinearLayout iconTitle(String emoji, int bg, String title, String desc) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        TextView ico = new TextView(this);
-        ico.setText(emoji);
-        ico.setTextSize(14f);
-        ico.setGravity(Gravity.CENTER);
-        ico.setTypeface(Typeface.DEFAULT_BOLD);
-        ico.setTextColor(TEAL2);
+        ImageView ico = new ImageView(this);
+        ico.setImageResource(R.drawable.ic_ob_chart);
+        ico.setColorFilter(PRIMARY);
+        ico.setPadding(dp(13), dp(13), dp(13), dp(13));
         GradientDrawable ig = new GradientDrawable();
-        ig.setColor(bg);
-        ig.setCornerRadius(dp(14));
+        ig.setColor(0xFFDBEAFE);
+        ig.setCornerRadius(dp(16));
         ico.setBackground(ig);
-        LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(44), dp(44));
-        ilp.setMargins(0, 0, dp(12), 0);
-        row.addView(ico, ilp);
+        row.addView(ico, new LinearLayout.LayoutParams(dp(52), dp(52)));
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
+        col.setPaddingRelative(dp(14), 0, 0, 0);
         TextView t = new TextView(this);
         t.setText(title);
-        t.setTextSize(16f);
+        t.setTextSize(16.5f);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setTextColor(TEXT_DARK);
         col.addView(t);
         TextView d = new TextView(this);
         d.setText(desc);
-        d.setTextSize(13f);
+        d.setTextSize(13.5f);
         d.setTextColor(TEXT_MUTED);
+        d.setLineSpacing(dp(3), 1f);
         d.setPadding(0, dp(4), 0, 0);
         col.addView(d);
         row.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -512,15 +513,15 @@ public final class SetupWizardActivity extends BaseActivity {
 
     private TextView tlChip(String text, int bg, int fg) {
         TextView v = new TextView(this);
-        v.setText(text);
-        v.setTextSize(11f);
+        v.setText("●  " + text);
+        v.setTextSize(12f);
         v.setTypeface(Typeface.DEFAULT_BOLD);
         v.setTextColor(fg);
         v.setGravity(Gravity.CENTER);
-        v.setPadding(dp(4), dp(10), dp(4), dp(10));
+        v.setPadding(dp(4), dp(11), dp(4), dp(11));
         GradientDrawable g = new GradientDrawable();
         g.setColor(bg);
-        g.setCornerRadius(dp(12));
+        g.setCornerRadius(dp(14));
         v.setBackground(g);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);
         lp.setMargins(dp(3), 0, dp(3), 0);
@@ -531,19 +532,19 @@ public final class SetupWizardActivity extends BaseActivity {
     private TextView bodyText(String s) {
         TextView t = new TextView(this);
         t.setText(s);
-        t.setTextSize(13.5f);
+        t.setTextSize(14.5f);
         t.setTextColor(TEXT_DARK);
         t.setPadding(0, 0, 0, dp(10));
-        t.setLineSpacing(0, 1.3f);
+        t.setLineSpacing(dp(4), 1f);
         return t;
     }
 
     private TextView fieldLabel(String s) {
         TextView t = new TextView(this);
         t.setText(s);
-        t.setTextSize(12f);
+        t.setTextSize(13f);
         t.setTypeface(Typeface.DEFAULT_BOLD);
-        t.setTextColor(TEXT_MUTED);
+        t.setTextColor(0xFF475569);
         t.setPadding(0, dp(10), 0, dp(6));
         return t;
     }
@@ -556,33 +557,33 @@ public final class SetupWizardActivity extends BaseActivity {
         e.setTextColor(TEXT_DARK);
         e.setHintTextColor(0xFF94A3B8);
         e.setSingleLine(true);
-        e.setPadding(dp(14), dp(13), dp(14), dp(13));
+        e.setPadding(dp(14), dp(14), dp(14), dp(14));
         GradientDrawable g = new GradientDrawable();
-        g.setColor(Color.WHITE);
-        g.setCornerRadius(dp(13));
-        g.setStroke(dp(2), CARD_BORDER);
+        g.setColor(0xFFF8FAFC);
+        g.setCornerRadius(dp(16));
+        g.setStroke(dp(1), 0xFFCBD5E1);
         e.setBackground(g);
         return e;
     }
 
     private void styleSpinner(Spinner sp) {
-        sp.setPadding(dp(8), dp(8), dp(8), dp(8));
+        sp.setPadding(dp(8), dp(10), dp(8), dp(10));
         GradientDrawable g = new GradientDrawable();
-        g.setColor(Color.WHITE);
-        g.setCornerRadius(dp(13));
-        g.setStroke(dp(2), CARD_BORDER);
+        g.setColor(0xFFF8FAFC);
+        g.setCornerRadius(dp(16));
+        g.setStroke(dp(1), 0xFFCBD5E1);
         sp.setBackground(g);
     }
 
     private TextView infoBox(String s) {
         TextView t = new TextView(this);
         t.setText(s);
-        t.setTextSize(12.5f);
-        t.setTextColor(TEXT_MUTED);
-        t.setPadding(dp(12), dp(12), dp(12), dp(12));
+        t.setTextSize(13f);
+        t.setTextColor(0xFF1E40AF);
+        t.setPadding(dp(14), dp(12), dp(14), dp(12));
         GradientDrawable g = new GradientDrawable();
-        g.setColor(0xFFF8FAFC);
-        g.setCornerRadius(dp(12));
+        g.setColor(0xFFEFF6FF);
+        g.setCornerRadius(dp(14));
         t.setBackground(g);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.topMargin = dp(12);
@@ -599,9 +600,10 @@ public final class SetupWizardActivity extends BaseActivity {
         b.setTypeface(Typeface.DEFAULT_BOLD);
         GradientDrawable g = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xFF3B82F6, 0xFF1D4ED8});
-        g.setCornerRadius(dp(14));
+                new int[]{0xFF3B82F6, 0xFF2563EB});
+        g.setCornerRadius(dp(16));
         b.setBackground(g);
+        b.setMinimumHeight(dp(54));
         b.setPadding(dp(12), dp(14), dp(12), dp(14));
         return b;
     }
@@ -613,10 +615,12 @@ public final class SetupWizardActivity extends BaseActivity {
         b.setTextColor(TEXT_MUTED);
         b.setTextSize(14.5f);
         GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(14));
+        g.setCornerRadius(dp(16));
         g.setColor(Color.WHITE);
-        g.setStroke(dp(1), CARD_BORDER);
+        g.setStroke(dp(1), 0xFFBFDBFE);
         b.setBackground(g);
+        b.setTextColor(0xFF2563EB);
+        b.setMinimumHeight(dp(54));
         b.setPadding(dp(12), dp(14), dp(12), dp(14));
         return b;
     }
