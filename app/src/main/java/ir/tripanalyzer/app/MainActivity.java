@@ -42,6 +42,10 @@ public final class MainActivity extends BaseActivity {
     private TextView distanceLabel;
     private TextView speedLabel;
     private TextView distUnit;
+    private TextView subTitleTv;
+    private TextView subCaptionTv;
+    private View subFillV;
+    private View subRestV;
     private TextView speedUnit;
     private LinearLayout avgHourlyBody;
     private TextView gpsFuelUnit;
@@ -668,6 +672,32 @@ public final class MainActivity extends BaseActivity {
         subTitle.setPaddingRelative(dpi(12), 0, 0, 0);
         subRow.addView(subTitle, new LinearLayout.LayoutParams(0, -2, 1f));
         subCard.addView(subRow);
+        this.subTitleTv = subTitle;
+
+        // نوار افقی باقی‌ماندهٔ اشتراک: هرچه به پایان نزدیک‌تر، کوتاه‌تر
+        LinearLayout track = new LinearLayout(mainActivity);
+        track.setOrientation(LinearLayout.HORIZONTAL);
+        track.setBackground(shape(0x1F000000, 6, 0));
+        View fill = new View(mainActivity);
+        View rest = new View(mainActivity);
+        track.addView(fill, new LinearLayout.LayoutParams(0, -1, 1f));
+        track.addView(rest, new LinearLayout.LayoutParams(0, -1, 0f));
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(-1, dpi(10));
+        tlp.topMargin = dpi(12);
+        subCard.addView(track, tlp);
+        this.subFillV = fill;
+        this.subRestV = rest;
+        TextView cap = tv("", 13f, 0xFF475569, false);
+        cap.setPadding(0, dpi(6), 0, 0);
+        subCard.addView(cap);
+        this.subCaptionTv = cap;
+        updateSubscriptionBar();
+        subCard.setClickable(true);
+        subCard.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                try { startActivity(new Intent(MainActivity.this, SubscriptionActivity.class)); } catch (Throwable ignored) {}
+            }
+        });
         if (!accessOk) {
             TextView expHint = tv(LicenseStore.INSTANCE.isActivationExpired(mainActivity)
                     ? "کد منقضی شده — کارت تحلیل غیرفعال است. گزارش‌ها و آمار همچنان قابل مشاهده‌اند."
@@ -931,6 +961,7 @@ public final class MainActivity extends BaseActivity {
     }
 
     private final void refresh() {
+        updateSubscriptionBar();
         refreshGpsBoxes();
         if (this.avgHourlyBody != null) {
             try { fillAvgHourlyBody(this, this.avgHourlyBody); } catch (Throwable ignored) {}
@@ -1149,6 +1180,27 @@ public final class MainActivity extends BaseActivity {
         TextView more = act.tv("جزئیات روز و ساعت‌ها ←", 14f, 0xFF2563EB, true);
         more.setPadding(0, act.dpi(12), 0, 0);
         host.addView(more);
+    }
+
+    private void updateSubscriptionBar() {
+        try {
+            if (subFillV == null || subRestV == null) return;
+            boolean ok = LicenseStore.INSTANCE.isAccessActive(this);
+            long left = LicenseStore.INSTANCE.getActivationDaysLeft(this);
+            long total = Math.max(1L, LicenseStore.INSTANCE.getPlanTotalDays(this));
+            float ratio = ok ? Math.max(0.03f, Math.min(1f, (float) left / (float) total)) : 0f;
+            ((LinearLayout.LayoutParams) subFillV.getLayoutParams()).weight = ratio;
+            ((LinearLayout.LayoutParams) subRestV.getLayoutParams()).weight = 1f - ratio;
+            int col = ratio > 0.35f ? 0xFF16A34A : (ratio > 0.12f ? 0xFFCA8A04 : 0xFFDC2626);
+            subFillV.setBackground(shape(col, 6, 0));
+            subFillV.requestLayout();
+            if (subTitleTv != null) subTitleTv.setText(LicenseStore.INSTANCE.getStatusLabel(this));
+            if (subCaptionTv != null) {
+                subCaptionTv.setText(ok
+                        ? (left <= 7 ? "اشتراک رو به پایان است — برای تمدید لمس کنید" : "برای دیدن طرح‌ها و تمدید لمس کنید")
+                        : "برای فعال‌سازی یا تمدید لمس کنید");
+            }
+        } catch (Throwable ignored) {}
     }
 
     private final GradientDrawable pillBg(int color) {
