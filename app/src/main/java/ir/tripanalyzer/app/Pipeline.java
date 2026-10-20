@@ -142,14 +142,7 @@ public final class Pipeline {
             // ۱) همین درخواست قبلاً تحلیل و ثبت شده → نتیجهٔ ذخیره‌شده، بدون ثبت و تحلیل دوباره
             try {
                 org.json.JSONObject hit = RecentRequests.find(applicationContext, reqKey);
-                boolean sigHit = false;
-                if (hit == null && (parse.getPickupKm() != null || parse.getTripKm() != null)) {
-                    // قانون ۳۰ ثانیه: همان قیمت + کیلومترها → تحلیل مجدد/ذخیرهٔ مجدد نشود (نتیجهٔ ذخیره‌شده نمایش داده می‌شود)
-                    hit = RecentRequests.findBySig(applicationContext, signatureOf, 30000L);
-                    sigHit = hit != null;
-                }
                 if (hit != null && hit.optJSONObject("rec") != null) {
-                    if (sigHit) { reqKeyHolder[0] = hit.optString("key", reqKey); }
                     org.json.JSONObject stored = hit.optJSONObject("rec");
                     final String hk = reqKeyHolder[0];
                     RecentRequests.touch(applicationContext, hk);
@@ -176,6 +169,21 @@ public final class Pipeline {
                     org.json.JSONObject est = RecentRequests.findEstimatedByBase(applicationContext, baseKey);
                     if (est != null && est.optJSONObject("rec") != null) {
                         upgradeOldTs = est.optJSONObject("rec").optLong("ts", 0L);
+                    }
+                } catch (Throwable ignored) {}
+            }
+            // قانون ۳۰ ثانیه: همان قیمت + همان اعداد و مقصد سازگار → همان سفر (مثلاً صفحهٔ قبل/بعد از «مشاهده جزئیات»)
+            // ردیف قبلی در جا با نتیجهٔ جدید (کامل‌تر) جایگزین می‌شود؛ ردیف جدید و شمارش جدید ساخته نمی‌شود.
+            if (upgradeOldTs <= 0L) {
+                try {
+                    org.json.JSONObject sh = RecentRequests.findBySig(applicationContext, signatureOf, 30000L);
+                    if (sh != null && sh.optJSONObject("rec") != null) {
+                        org.json.JSONObject orec = sh.optJSONObject("rec");
+                        String nd = "";
+                        try { String[] ad2 = ParseLayer.INSTANCE.extractAddresses(rawText); nd = RecentRequests.norm(ad2[1]); } catch (Throwable ignored) {}
+                        String od = RecentRequests.norm(orec.optString("dest", ""));
+                        boolean compat = nd.isEmpty() || od.isEmpty() || nd.contains(od) || od.contains(nd);
+                        if (compat) upgradeOldTs = orec.optLong("ts", 0L);
                     }
                 } catch (Throwable ignored) {}
             }
