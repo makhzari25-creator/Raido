@@ -57,6 +57,19 @@ public final class Pipeline {
     private Pipeline() {
     }
 
+    // هر تغییر متن صفحه (مثلاً شمارندهٔ ثانیه) یک ترد تحلیل جدید می‌سازد؛ برای یک درخواست فقط یکی باید کار کند.
+    private static final java.util.Set<String> IN_FLIGHT = new java.util.HashSet<>();
+    private static String lastDoneSig = "";
+    private static long lastDoneAt = 0L;
+
+    private static boolean acquire(String k) {
+        synchronized (IN_FLIGHT) { return IN_FLIGHT.add(k); }
+    }
+
+    private static void release(String k) {
+        synchronized (IN_FLIGHT) { IN_FLIGHT.remove(k); }
+    }
+
     public final void processSync(Context context, String rawText, String source) {
         Intrinsics.checkNotNullParameter(context, "context");
         Intrinsics.checkNotNullParameter(rawText, "rawText");
@@ -123,6 +136,10 @@ public final class Pipeline {
             final String reqKey = signatureOf + "#" + addrKey;
             final String baseKey = String.valueOf(parse.getFare()) + "#" + addrKey;
 
+            // در حال تحلیل همین درخواست (قیمت/کیلومتر/دقیقه یکسان) → نادیده بگیر
+            final String sigKey = "sig:" + signatureOf;
+            if (!acquire(sigKey)) return;
+            try {
             // ۱) همین درخواست قبلاً تحلیل و ثبت شده → نتیجهٔ ذخیره‌شده، بدون ثبت و تحلیل دوباره
             try {
                 org.json.JSONObject hit = RecentRequests.find(applicationContext, reqKey);
@@ -143,6 +160,14 @@ public final class Pipeline {
                     return;
                 }
             } catch (Throwable ignored) {}
+
+            // همان اعداد تا ۲۰ ثانیه پیش تحلیل شده (آدرس در پارس‌های مختلف کمی فرق کرده) → دوباره ثبت نکن
+            synchronized (IN_FLIGHT) {
+                if (signatureOf.equals(lastDoneSig) && System.currentTimeMillis() - lastDoneAt < 20000L) {
+                    lastDoneAt = System.currentTimeMillis();
+                    return;
+                }
+            }
 
             // ۲) همان درخواست با کیلومتر تخمینی ثبت شده و حالا کیلومتر واقعی رسید → به‌روزرسانی همان ثبت
             boolean isFresh = true;
@@ -263,6 +288,7 @@ public final class Pipeline {
                         boolean estimated = analyze.getDistanceSource() != DataSource.REAL;
                         RecentRequests.put(applicationContext, reqKey, baseKey, rec, estimated);
                         RecentRequests.markCurrent(applicationContext, reqKey);
+                        synchronized (IN_FLIGHT) { lastDoneSig = signatureOf; lastDoneAt = System.currentTimeMillis(); }
                     } catch (Throwable ignored) {}
                     ReportAutoSave.INSTANCE.markPending(applicationContext);
                     // همگام‌سازی کم‌هزینه و محدودشده (فقط وقتی موعدش رسیده باشد؛ روی ترد جدا)
@@ -279,6 +305,9 @@ public final class Pipeline {
                         Notifier.INSTANCE.show(applicationContext, analyze, currentTimeMillis, false, parse.getFare());
                     }
                 }
+            }
+            } finally {
+                release(sigKey);
             }
         }
     }
