@@ -74,22 +74,30 @@ Deno.serve(async (req) => {
       await say(chat, "فعلاً فقط شمارهٔ موبایل ایران پشتیبانی می‌شود.", { reply_markup: { remove_keyboard: true } });
       return json({ ok: true });
     }
-    const { data: ls } = await db.from("login_sessions").select("code")
+    const { data: ls } = await db.from("login_sessions").select("code, contact_phone")
       .eq("telegram_user_id", fromId).eq("status", "awaiting_contact").gt("expires_at", nowIso)
       .order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (!ls) {
       await say(chat, "درخواست ورود فعالی پیدا نشد. از داخل برنامه دوباره شروع کنید.", { reply_markup: { remove_keyboard: true } });
       return json({ ok: true });
     }
+    // شمارهٔ واردشده در اپ باید با شمارهٔ تأییدشدهٔ تلگرام یکی باشد
+    if (ls.contact_phone && ls.contact_phone !== phone) {
+      await say(chat, "شمارهٔ تلگرام شما با شمارهٔ واردشده در برنامه یکی نیست. در رایدو شمارهٔ درست را وارد کنید و دوباره شروع کنید.", { reply_markup: { remove_keyboard: true } });
+      return json({ ok: true });
+    }
     // شماره یونیک است؛ کاربر موجود دوباره استفاده می‌شود
-    const { data: existing } = await db.from("users").select("id, banned").eq("phone", phone).maybeSingle();
+    const { data: existing } = await db.from("users").select("id, banned, phone_verified").eq("phone", phone).maybeSingle();
     if (existing?.banned) {
       await say(chat, "این حساب مسدود شده است. برای پیگیری با پشتیبانی تماس بگیرید: @TripAnalyzerSupport", { reply_markup: { remove_keyboard: true } });
       return json({ ok: true });
     }
     let userId = existing?.id as string | undefined;
     if (userId) {
-      await db.from("users").update({ telegram_id: fromId }).eq("id", userId);
+      const upd: Record<string, unknown> = { telegram_id: fromId };
+      // حساب ساخته‌شده با گوگل و شمارهٔ تأییدنشده: صاحب واقعی شماره (تأیید تلگرام) برنده است
+      if (existing && existing.phone_verified === false) { upd.phone_verified = true; upd.google_sub = null; }
+      await db.from("users").update(upd).eq("id", userId);
     } else {
       const { data: created, error } = await db.from("users").insert({ phone, telegram_id: fromId }).select("id").single();
       if (error || !created) {

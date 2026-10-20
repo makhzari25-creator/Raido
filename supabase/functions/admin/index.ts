@@ -54,13 +54,31 @@ Deno.serve(async (req) => {
   }
 
   if (action === "users") {
-    const q = String(body.q ?? "").replace(/\D/g, "");
-    let query = db.from("users").select("id, phone, created_at, last_seen, app_version, device_model, banned, ban_reason, subscriptions(plan,is_premium,expires_at,trial_used)")
+    const qraw = String(body.q ?? "").trim().toLowerCase();
+    const q = qraw.includes("@") ? "" : qraw.replace(/\D/g, "");
+    let query = db.from("users").select("id, phone, email, phone_verified, signup_via, last_via, created_at, last_seen, app_version, device_model, banned, ban_reason, subscriptions(plan,is_premium,expires_at,trial_used)")
       .order("created_at", { ascending: false }).limit(50);
-    if (q) query = query.like("phone", `%${q}%`);
+    if (q) query = query.or(`phone.like.%${q}%,contact_phone.like.%${q}%`);
+    else if (qraw.includes("@") && /^[a-z0-9@._+-]+$/.test(qraw)) query = query.like("email", `%${qraw}%`);
     const { data, error } = await query;
     if (error) return json({ error: "server" }, 500);
     return json({ users: data });
+  }
+
+  if (action === "get_settings") {
+    const { data } = await db.from("app_settings").select("key, value");
+    return json({ settings: Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value])) });
+  }
+
+  if (action === "set_setting") {
+    const key = String(body.key ?? "");
+    let value = String(body.value ?? "").trim();
+    if (key !== "tutorial_url") return json({ error: "bad_request" }, 400);
+    if (value && !/^https:\/\/[^\s]{4,500}$/.test(value)) return json({ error: "bad_url" }, 400);
+    value = value.slice(0, 500);
+    const { error } = await db.from("app_settings").upsert({ key, value, updated_at: new Date().toISOString() });
+    if (error) return json({ error: "server" }, 500);
+    return json({ ok: true });
   }
 
   if (action === "grant") {

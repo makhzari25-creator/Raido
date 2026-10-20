@@ -29,10 +29,10 @@ public final class LicenseStore {
     private static final String K_ANC_BOOT = "anc_boot";
 
     public static final long TRIAL_DAYS = 7L;
-    public static final int PRICE_MONTHLY = 49000;
-    public static final int PRICE_YEARLY = 499000;
-    public static final int PRICE_PREMIUM_MONTHLY = 73500;
-    public static final int PRICE_PREMIUM_YEARLY = 748500;
+    public static final int PRICE_MONTHLY = 99900;
+    public static final int PRICE_YEARLY = 999900;
+    public static final int PRICE_PREMIUM_MONTHLY = 149900;
+    public static final int PRICE_PREMIUM_YEARLY = 1499900;
     public static final String TELEGRAM_SUPPORT = "https://t.me/TripAnalyzerSupport";
     public static final String TELEGRAM_ID = "@TripAnalyzerSupport";
 
@@ -220,6 +220,18 @@ public final class LicenseStore {
         if (s == null) return 0;
         long left = Math.min(s.expiresAt, Long.MAX_VALUE) - effectiveNow(c);
         return left <= 0 ? 0 : TimeUnit.MILLISECONDS.toDays(left) + 1;
+    }
+
+    /** طول کل دورهٔ طرح فعلی (روز) برای نوار پیشرفت؛ اگر روزهای مانده بیشتر باشد (اشتراک‌های پشت‌سرهم) همان بیشتر است. */
+    public long getPlanTotalDays(Context c) {
+        Status s = status(c);
+        long base;
+        String plan = s == null ? "" : s.plan;
+        if ("YEARLY".equals(plan) || "PREMIUM_YEARLY".equals(plan)) base = 365;
+        else if ("MONTHLY".equals(plan) || "PREMIUM_MONTHLY".equals(plan)) base = 30;
+        else if ("TRIAL_7".equals(plan)) base = 7;
+        else base = 30;
+        return Math.max(base, getActivationDaysLeft(c));
     }
 
     public String getPlanTypeCode(Context c) {

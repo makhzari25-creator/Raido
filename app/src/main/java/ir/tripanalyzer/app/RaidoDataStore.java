@@ -78,14 +78,7 @@ public final class RaidoDataStore {
         } catch (Exception ignored) {}
     }
 
-    public void appendAnalysis(Context c, JSONObject recordFromStore) {
-        if (c == null || recordFromStore == null) return;
-        UsageCounter.onAnalysis(c);
-        try {
-            JSONObject root = readRoot(c);
-            JSONArray arr = root.optJSONArray("analyses");
-            if (arr == null) arr = new JSONArray();
-
+    private JSONObject buildRow(JSONObject recordFromStore) throws Exception {
             JSONObject row = new JSONObject();
             row.put("ts", recordFromStore.optLong("ts", System.currentTimeMillis()));
             row.put("verdict", recordFromStore.optString("verdict", "GRAY"));
@@ -121,6 +114,42 @@ public final class RaidoDataStore {
                 row.put("activityZoneStatus", recordFromStore.optString("activityZoneStatus"));
             }
             row.put("accepted", false);
+        return row;
+    }
+
+    /** اگر ردیف قبلی با همین ts هست جایگزین می‌شود (کیلومتر واقعی رسید)، وگرنه اضافه. شمارنده دوباره زیاد نمی‌شود. */
+    public void upsertAnalysis(Context c, JSONObject rec, long oldTs) {
+        if (c == null || rec == null) return;
+        try {
+            JSONObject root = readRoot(c);
+            JSONArray arr = root.optJSONArray("analyses");
+            if (arr != null && oldTs > 0) {
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject old = arr.optJSONObject(i);
+                    if (old != null && old.optLong("ts", -1) == oldTs) {
+                        JSONObject row = buildRow(rec);
+                        row.put("ts", oldTs);
+                        row.put("accepted", old.optBoolean("accepted", false));
+                        arr.put(i, row);
+                        root.put("analyses", arr);
+                        writeRoot(c, root);
+                        return;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        appendAnalysis(c, rec);
+    }
+
+    public void appendAnalysis(Context c, JSONObject recordFromStore) {
+        if (c == null || recordFromStore == null) return;
+        UsageCounter.onAnalysis(c);
+        try {
+            JSONObject root = readRoot(c);
+            JSONArray arr = root.optJSONArray("analyses");
+            if (arr == null) arr = new JSONArray();
+
+            JSONObject row = buildRow(recordFromStore);
 
             long cutoff = System.currentTimeMillis() - RETENTION_MS;
             JSONArray next = new JSONArray();

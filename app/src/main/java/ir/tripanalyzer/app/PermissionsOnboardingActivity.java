@@ -295,10 +295,53 @@ public final class PermissionsOnboardingActivity extends BaseActivity {
         if (Build.VERSION.SDK_INT >= 33) {
             card.addView(statusRow("Notifications (app)", postOk));
         }
+        Button tut = new Button(this);
+        tut.setText("ویدیو آموزشی فعال کردن دسترسی‌ها");
+        tut.setAllCaps(false);
+        tut.setTextSize(14f);
+        tut.setTypeface(Typeface.DEFAULT_BOLD);
+        tut.setTextColor(0xFF1D4ED8);
+        tut.setGravity(Gravity.CENTER);
+        GradientDrawable tg = new GradientDrawable();
+        tg.setColor(0xFFEFF6FF);
+        tg.setCornerRadius(dp(14));
+        tg.setStroke(dp(1), 0xFFBFDBFE);
+        tut.setBackground(tg);
+        tut.setPadding(dp(12), 0, dp(12), 0);
+        LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(-1, dp(48));
+        tlp.topMargin = dp(10);
+        tut.setLayoutParams(tlp);
+        tut.setOnClickListener(v -> openTutorial(tut));
+        card.addView(tut);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.bottomMargin = dp(12);
         card.setLayoutParams(lp);
         return card;
+    }
+
+    /** لینک ویدیو از سرور (قابل تغییر از پنل) گرفته می‌شود؛ بدون نیاز به آپدیت اپ. */
+    private void openTutorial(final Button b) {
+        b.setEnabled(false);
+        new Thread(() -> {
+            String url = "";
+            try {
+                org.json.JSONObject r = RaidoCloud.post("app-config", new org.json.JSONObject(), null, 5000, 6000);
+                url = r.optString("tutorial_url", "");
+            } catch (Throwable ignored) {}
+            final String u = url;
+            runOnUiThread(() -> {
+                b.setEnabled(true);
+                if (u.startsWith("https://")) {
+                    try {
+                        startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u)));
+                    } catch (Throwable e) {
+                        android.widget.Toast.makeText(this, "لینک باز نشد", android.widget.Toast.LENGTH_LONG).show();
+                    }
+                } else {
+                    android.widget.Toast.makeText(this, "ویدیوی آموزشی هنوز آماده نیست یا اینترنت قطع است", android.widget.Toast.LENGTH_LONG).show();
+                }
+            });
+        }, "raido-tut").start();
     }
 
     private View statusRow(String name, boolean on) {

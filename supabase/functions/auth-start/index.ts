@@ -17,8 +17,13 @@ Deno.serve(async (req) => {
   // پاکسازی ردیف‌های قدیمی
   await db.from("login_sessions").delete().lt("expires_at", new Date(Date.now() - 86400_000).toISOString());
 
+  let phone: string | null = null;
+  if (body.phone) {
+    const ph = String(body.phone).replace(/[^0-9]/g, "");
+    if (/^09[0-9]{9}$/.test(ph)) phone = ph; else return json({ error: "bad_phone" }, 400);
+  }
   const code = randomCode(16);
-  const { error } = await db.from("login_sessions").insert({ code, device_fp: fp });
+  const { error } = await db.from("login_sessions").insert({ code, device_fp: fp, contact_phone: phone });
   if (error) return json({ error: "server" }, 500);
   return json({ code, bot_url: `https://t.me/${BOT}?start=${code}`, expires_in: 600 });
 });

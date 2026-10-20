@@ -111,22 +111,51 @@ public final class Pipeline {
                     parse.getFare(), parse.getPickupKm(), parse.getTripKm(),
                     parse.getPickupMin(), parse.getTripMin());
             long currentTimeMillis = System.currentTimeMillis();
-            boolean isFresh = Store.INSTANCE.isFresh(applicationContext, signatureOf, currentTimeMillis);
-            if (!isFresh && legs.hasAnyKm()) {
+
+            // کلید درخواست: امضای عددی + آدرس‌ها (برای تشخیص دقیق تکراری‌ها)
+            String addrKey = "";
+            try {
+                String[] ad = ParseLayer.INSTANCE.extractAddresses(rawText);
+                addrKey = RecentRequests.norm(ad[0]) + "|" + RecentRequests.norm(ad[1])
+                        + "|" + (ad.length > 2 ? RecentRequests.norm(ad[2]) : "");
+                if ("||".equals(addrKey)) addrKey = "";
+            } catch (Throwable ignored) {}
+            final String reqKey = signatureOf + "#" + addrKey;
+            final String baseKey = String.valueOf(parse.getFare()) + "#" + addrKey;
+
+            // ۱) همین درخواست قبلاً تحلیل و ثبت شده → نتیجهٔ ذخیره‌شده، بدون ثبت و تحلیل دوباره
+            try {
+                org.json.JSONObject hit = RecentRequests.find(applicationContext, reqKey);
+                if (hit != null && hit.optJSONObject("rec") != null) {
+                    org.json.JSONObject stored = hit.optJSONObject("rec");
+                    RecentRequests.touch(applicationContext, reqKey);
+                    if (RecentRequests.isCurrent(applicationContext, reqKey, 60000L)) {
+                        RecentRequests.touchCurrent(applicationContext);
+                        return; // همان صفحه هنوز باز است؛ فقط ادامه
+                    }
+                    kotlin.Pair<TripResult, Long> pr = Store.INSTANCE.parseResult(stored);
+                    Store.INSTANCE.saveLast(applicationContext, stored);
+                    if (!stored.optBoolean("duringTrip", false) && pr.getFirst().getVerdict() != Verdict.GRAY) {
+                        Store.INSTANCE.saveActiveTrip(applicationContext, stored);
+                    }
+                    RecentRequests.markCurrent(applicationContext, reqKey);
+                    Notifier.INSTANCE.show(applicationContext, pr.getFirst(), pr.getSecond().longValue(), false, parse.getFare());
+                    return;
+                }
+            } catch (Throwable ignored) {}
+
+            // ۲) همان درخواست با کیلومتر تخمینی ثبت شده و حالا کیلومتر واقعی رسید → به‌روزرسانی همان ثبت
+            boolean isFresh = true;
+            long upgradeOldTs = 0L;
+            if (legs.hasAnyKm() && addrKey.length() > 0) {
                 try {
-                    org.json.JSONObject last = Store.INSTANCE.last(applicationContext);
-                    if (last != null) {
-                        String ds = last.optString("distSrc", last.optString("distanceSource", ""));
-                        boolean lastEst = ds.contains("EST") || "ESTIMATED".equalsIgnoreCase(ds) || "MIXED".equalsIgnoreCase(ds);
-                        double lastFare = last.optDouble("fare", -1);
-                        double curFare = parse.getFare() != null ? parse.getFare() : -2;
-                        if (lastEst && Math.abs(lastFare - curFare) < 1.0) {
-                            isFresh = true;
-                            Store.INSTANCE.forceFresh(applicationContext, signatureOf, currentTimeMillis);
-                        }
+                    org.json.JSONObject est = RecentRequests.findEstimatedByBase(applicationContext, baseKey);
+                    if (est != null && est.optJSONObject("rec") != null) {
+                        upgradeOldTs = est.optJSONObject("rec").optLong("ts", 0L);
                     }
                 } catch (Throwable ignored) {}
             }
+            final boolean isUpgrade = upgradeOldTs > 0L;
             EngineSettings engineSettings = Store.INSTANCE.settings(applicationContext);
 
             TripResult analyze = TripEngine.INSTANCE.analyze(
@@ -189,6 +218,7 @@ public final class Pipeline {
                     || Intrinsics.areEqual(source, "manual")) {
                 if (analyze.getVerdict() != Verdict.GRAY || isFresh || Intrinsics.areEqual(source, "manual")) {
                     org.json.JSONObject rec = Store.INSTANCE.recordFrom(analyze, engineSettings, parse, currentTimeMillis);
+                    if (isUpgrade) { try { rec.put("ts", upgradeOldTs); } catch (Throwable ignored) {} }
                     try {
                         if (originAddr != null) rec.put("origin", originAddr);
                         if (destAddr != null) rec.put("dest", destAddr);
@@ -225,15 +255,21 @@ public final class Pipeline {
                     } catch (Throwable ignored) {}
                     try {
                         if (isFresh && analyze.getVerdict() != Verdict.GRAY) {
-                            RaidoDataStore.INSTANCE.appendAnalysis(applicationContext, rec);
+                            if (isUpgrade) RaidoDataStore.INSTANCE.upsertAnalysis(applicationContext, rec, upgradeOldTs);
+                            else RaidoDataStore.INSTANCE.appendAnalysis(applicationContext, rec);
                         }
+                    } catch (Throwable ignored) {}
+                    try {
+                        boolean estimated = analyze.getDistanceSource() != DataSource.REAL;
+                        RecentRequests.put(applicationContext, reqKey, baseKey, rec, estimated);
+                        RecentRequests.markCurrent(applicationContext, reqKey);
                     } catch (Throwable ignored) {}
                     ReportAutoSave.INSTANCE.markPending(applicationContext);
                     // همگام‌سازی کم‌هزینه و محدودشده (فقط وقتی موعدش رسیده باشد؛ روی ترد جدا)
                     try { CloudSync.syncIfDue(applicationContext); } catch (Throwable ignored) {}
 
                     try {
-                        if (isFresh) {
+                        if (isFresh && !isUpgrade) {
                             Store.INSTANCE.recordVerdict(applicationContext, analyze.getVerdict());
                         }
                     } catch (Throwable ignored) {
