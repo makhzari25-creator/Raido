@@ -15,6 +15,14 @@ android {
     def ksPath = System.getenv("RAIDO_KEYSTORE_PATH")
     def hasReleaseKey = ksPath != null && file(ksPath).exists()
     signingConfigs {
+        // امضای ثابت برای بیلدهای بدون کلید انتشار: هر بیلد جدید روی قبلی نصب (آپدیت) می‌شود.
+        // کلید عمومی/آزمایشی است؛ برای انتشار در بازار حتماً کلید اصلی (RAIDO_KEYSTORE_*) استفاده شود.
+        ci {
+            storeFile file("raido-ci.keystore")
+            storePassword "raidoci123"
+            keyAlias "raidoci"
+            keyPassword "raidoci123"
+        }
         if (hasReleaseKey) {
             release {
                 storeFile file(ksPath)
@@ -30,7 +38,7 @@ android {
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             if (hasReleaseKey) signingConfig signingConfigs.release
-            else signingConfig signingConfigs.debug
+            else signingConfig signingConfigs.ci
         }
         debug {
             minifyEnabled false

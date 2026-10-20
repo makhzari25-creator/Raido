@@ -54,6 +54,13 @@ jobs:
           fi
           ls -la app/build/outputs/mapping/release/ 2>/dev/null || echo "No mapping dir"
 
+      - name: Verify APK signature and manifest
+        run: |
+          BT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/34.0.0"
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          "$BT/apksigner" verify --verbose --print-certs "$APK" | head -12
+          "$BT/aapt2" dump badging "$APK" | grep -E "^package|sdkVersion|targetSdk" 
+
       - name: Rename APK
         run: |
           VER=$(grep -oP 'versionName "\K[^"]+' app/build.gradle)
