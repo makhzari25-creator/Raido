@@ -70,6 +70,36 @@ Deno.serve(async (req) => {
     return json({ settings: Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value])) });
   }
 
+  if (action === "get_dep") {
+    const { data } = await db.from("app_settings").select("key, value").in("key", ["dep_table", "dep_version"]);
+    const m: Record<string, string> = Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]));
+    return json({ dep_table: m.dep_table ?? "", dep_version: m.dep_version ?? "" });
+  }
+
+  if (action === "set_dep") {
+    const raw = String(body.dep_table ?? "");
+    if (raw.length < 50 || raw.length > 300_000) return json({ error: "bad_table" }, 400);
+    let t: { families?: unknown; data?: Record<string, unknown> };
+    try { t = JSON.parse(raw); } catch { return json({ error: "bad_json" }, 400); }
+    const fams = t.families, dat = t.data;
+    if (!Array.isArray(fams) || fams.length < 1 || fams.length > 300 || fams.some((f) => typeof f !== "string")) return json({ error: "bad_families" }, 400);
+    if (!dat || typeof dat !== "object" || !Array.isArray((dat as Record<string, unknown>)["سایر"])) return json({ error: "need_other" }, 400);
+    for (const [k, rows] of Object.entries(dat)) {
+      if (!Array.isArray(rows) || rows.length < 1) return json({ error: "bad_rows", family: k }, 400);
+      for (const r of rows as unknown[]) {
+        if (!Array.isArray(r) || r.length !== 3 || r.some((x) => typeof x !== "number" || !isFinite(x) || x < 0 || x > 5_000_000)) return json({ error: "bad_row", family: k }, 400);
+      }
+    }
+    for (const f of fams as string[]) if (!Array.isArray(dat[f])) return json({ error: "family_without_data", family: f }, 400);
+    const version = new Date().toISOString();
+    const { error } = await db.from("app_settings").upsert([
+      { key: "dep_table", value: JSON.stringify(t), updated_at: version },
+      { key: "dep_version", value: version, updated_at: version },
+    ]);
+    if (error) return json({ error: "server" }, 500);
+    return json({ ok: true, dep_version: version });
+  }
+
   if (action === "set_setting") {
     const key = String(body.key ?? "");
     let value = String(body.value ?? "").trim();

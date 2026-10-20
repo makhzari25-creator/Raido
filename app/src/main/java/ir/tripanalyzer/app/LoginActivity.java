@@ -30,8 +30,8 @@ public final class LoginActivity extends BaseActivity {
 
     private TextView statusTv;
     private TextView diagTv;
-    private Button loginBtn;
-    private Button googleBtn;
+    private View loginBtn;
+    private View googleBtn;
     private android.widget.EditText phoneEt;
     private final AtomicBoolean polling = new AtomicBoolean(false);
     private volatile boolean alive = true;
@@ -214,50 +214,22 @@ public final class LoginActivity extends BaseActivity {
         ex.setPadding(0, dp(6), 0, 0);
         card.addView(ex);
 
-        googleBtn = new Button(this);
-        googleBtn.setText("ورود با گوگل");
-        googleBtn.setAllCaps(false);
-        googleBtn.setTextSize(16f);
-        googleBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        googleBtn.setTextColor(0xFF0F172A);
-        googleBtn.setGravity(Gravity.CENTER);
-        googleBtn.setPadding(dp(24), 0, dp(24), 0);
-        googleBtn.setBackground(shp(Color.WHITE, 16, 0xFFCBD5E1));
+        googleBtn = authButton("ورود با گوگل", null, "G");
+        googleBtn.setOnClickListener(v -> startGoogle());
         LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(-1, dp(54));
         glp.topMargin = dp(14);
-        googleBtn.setLayoutParams(glp);
-        googleBtn.setOnClickListener(v -> startGoogle());
-        card.addView(googleBtn);
+        card.addView(googleBtn, glp);
 
         TextView or = tv("یا", 13f, 0xFF94A3B8, false);
         or.setGravity(Gravity.CENTER);
         or.setPadding(0, dp(10), 0, dp(2));
         card.addView(or);
 
-        loginBtn = new Button(this);
-        loginBtn.setText("ورود با تلگرام");
-        loginBtn.setAllCaps(false);
-        loginBtn.setTextSize(16f);
-        loginBtn.setTypeface(Typeface.DEFAULT_BOLD);
-        loginBtn.setTextColor(Color.WHITE);
-        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{0xFF3B82F6, 0xFF2563EB});
-        bg.setCornerRadius(dp(16));
-        loginBtn.setBackground(bg);
-        try {
-            android.graphics.drawable.Drawable ic = getResources().getDrawable(R.drawable.ic_lg_send, getTheme()).mutate();
-            ic.setTint(Color.WHITE);
-            ic.setBounds(0, 0, dp(20), dp(20));
-            loginBtn.setCompoundDrawablesRelative(ic, null, null, null);
-            loginBtn.setCompoundDrawablePadding(dp(10));
-        } catch (Throwable ignored) {}
+        loginBtn = authButton("ورود با تلگرام", R.drawable.ic_lg_send, null);
+        loginBtn.setOnClickListener(v -> startLogin());
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, dp(54));
         blp.topMargin = dp(6);
-        loginBtn.setLayoutParams(blp);
-        loginBtn.setPadding(dp(24), 0, dp(24), 0);
-        loginBtn.setGravity(Gravity.CENTER);
-        loginBtn.setOnClickListener(v -> startLogin());
-        card.addView(loginBtn);
+        card.addView(loginBtn, blp);
 
         statusTv = tv("", 14f, 0xFF1D4ED8, false);
         statusTv.setGravity(Gravity.CENTER);
@@ -290,6 +262,43 @@ public final class LoginActivity extends BaseActivity {
         setContentView(shell);
         try { Fonts.INSTANCE.applyRecursive(shell); } catch (Throwable ignored) {}
         refreshEnabled();
+    }
+
+    /** دکمهٔ آبی با محتوای دقیقاً وسط‌چین (آیکون/حرف + متن) */
+    private LinearLayout authButton(String text, Integer iconRes, String letter) {
+        LinearLayout b = new LinearLayout(this);
+        b.setOrientation(LinearLayout.HORIZONTAL);
+        b.setGravity(Gravity.CENTER);
+        b.setClickable(true);
+        b.setFocusable(true);
+        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{0xFF3B82F6, 0xFF2563EB});
+        bg.setCornerRadius(dp(16));
+        b.setBackground(bg);
+        try { b.setForeground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x33FFFFFF), null, shp(Color.WHITE, 16, 0))); } catch (Throwable ignored) {}
+        if (iconRes != null) {
+            android.widget.ImageView ic = new android.widget.ImageView(this);
+            ic.setImageResource(iconRes);
+            ic.setColorFilter(Color.WHITE);
+            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(22), dp(22));
+            ilp.setMarginEnd(dp(10));
+            b.addView(ic, ilp);
+        } else if (letter != null) {
+            TextView g = tv(letter, 14f, 0xFF2563EB, true);
+            g.setGravity(Gravity.CENTER);
+            GradientDrawable gc = new GradientDrawable();
+            gc.setShape(GradientDrawable.OVAL);
+            gc.setColor(Color.WHITE);
+            g.setBackground(gc);
+            LinearLayout.LayoutParams glp2 = new LinearLayout.LayoutParams(dp(24), dp(24));
+            glp2.setMarginEnd(dp(10));
+            b.addView(g, glp2);
+        }
+        TextView t = tv(text, 16f, Color.WHITE, true);
+        t.setGravity(Gravity.CENTER);
+        b.addView(t, new LinearLayout.LayoutParams(-2, -2));
+        return b;
     }
 
     private android.widget.EditText field(String hint, int type) {

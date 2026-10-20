@@ -81,6 +81,20 @@ public final class RecentRequests {
         return null;
     }
 
+    /** آخرین ثبت با همین قیمت که تا windowMs پیش ذخیره شده (برای ادغام صفحهٔ قبل/بعد از جزئیات) */
+    public static JSONObject findByFare(Context c, Double fare, long windowMs) {
+        if (fare == null) return null;
+        JSONArray a = load(c);
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject o = a.optJSONObject(i);
+            if (o == null || now - o.optLong("saved", 0L) >= windowMs) continue;
+            JSONObject r = o.optJSONObject("rec");
+            if (r != null && r.has("fare") && !r.isNull("fare") && Math.abs(r.optDouble("fare") - fare) < 1.0) return o;
+        }
+        return null;
+    }
+
     public static void put(Context c, String key, String base, JSONObject rec, boolean estimated) {
         put(c, key, base, rec, estimated, "");
     }

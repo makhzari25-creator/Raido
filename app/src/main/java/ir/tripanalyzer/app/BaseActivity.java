@@ -84,7 +84,9 @@ public abstract class BaseActivity extends Activity {
         if (root instanceof android.widget.TextView) {
             android.widget.TextView tv = (android.widget.TextView) root;
             tv.setTextDirection(View.TEXT_DIRECTION_RTL);
-            tv.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+            int hg = tv.getGravity() & android.view.Gravity.HORIZONTAL_GRAVITY_MASK;
+            tv.setTextAlignment(hg == android.view.Gravity.CENTER_HORIZONTAL
+                    ? View.TEXT_ALIGNMENT_CENTER : View.TEXT_ALIGNMENT_VIEW_START);
         }
         if (root instanceof ViewGroup) {
             ViewGroup g = (ViewGroup) root;

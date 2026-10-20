@@ -60,6 +60,17 @@ public final class Pipeline {
     // هر تغییر متن صفحه (مثلاً شمارندهٔ ثانیه) یک ترد تحلیل جدید می‌سازد؛ برای یک درخواست فقط یکی باید کار کند.
     private static final java.util.Set<String> IN_FLIGHT = new java.util.HashSet<>();
 
+    private static final java.util.Map<String, Object> FARE_LOCKS = new java.util.HashMap<>();
+
+    private static Object fareLock(Double fare) {
+        String k = String.valueOf(fare);
+        synchronized (FARE_LOCKS) {
+            Object o = FARE_LOCKS.get(k);
+            if (o == null) { o = new Object(); if (FARE_LOCKS.size() > 64) FARE_LOCKS.clear(); FARE_LOCKS.put(k, o); }
+            return o;
+        }
+    }
+
     private static boolean acquire(String k) {
         synchronized (IN_FLIGHT) { return IN_FLIGHT.add(k); }
     }
@@ -139,6 +150,8 @@ public final class Pipeline {
             final String sigKey = "sig:" + signatureOf;
             if (!acquire(sigKey)) return;
             try {
+            // تحلیل‌های هم‌قیمت پشت‌سرهم اجرا می‌شوند تا دومی نتیجهٔ اولی را ببیند (صفحهٔ قبل/بعد از «مشاهده جزئیات»)
+            synchronized (fareLock(parse.getFare())) {
             // ۱) همین درخواست قبلاً تحلیل و ثبت شده → نتیجهٔ ذخیره‌شده، بدون ثبت و تحلیل دوباره
             try {
                 org.json.JSONObject hit = RecentRequests.find(applicationContext, reqKey);
@@ -184,6 +197,22 @@ public final class Pipeline {
                         String od = RecentRequests.norm(orec.optString("dest", ""));
                         boolean compat = nd.isEmpty() || od.isEmpty() || nd.contains(od) || od.contains(nd);
                         if (compat) upgradeOldTs = orec.optLong("ts", 0L);
+                    }
+                } catch (Throwable ignored) {}
+            }
+            // قیمت یکسان تا ۳۰ ثانیه پیش + یکی تخمینی/بی‌کیلومتر و دیگری دارای کیلومتر: همان سفر است
+            if (upgradeOldTs <= 0L) {
+                try {
+                    org.json.JSONObject fc = RecentRequests.findByFare(applicationContext, parse.getFare(), 30000L);
+                    if (fc != null && fc.optJSONObject("rec") != null && !signatureOf.equals(fc.optString("sig"))) {
+                        org.json.JSONObject frec = fc.optJSONObject("rec");
+                        boolean candEst = fc.optBoolean("est", false);
+                        if (candEst && legs.hasAnyKm()) {
+                            upgradeOldTs = frec.optLong("ts", 0L); // کامل‌تر شد → جایگزین
+                        } else if (!legs.hasAnyKm()) {
+                            // ناقص‌تر از ثبت قبلی است → همان نتیجهٔ ذخیره‌شده، ثبت دوباره نشود
+                            return;
+                        }
                     }
                 } catch (Throwable ignored) {}
             }
@@ -311,6 +340,7 @@ public final class Pipeline {
                         Notifier.INSTANCE.show(applicationContext, analyze, currentTimeMillis, false, parse.getFare());
                     }
                 }
+            }
             }
             } finally {
                 release(sigKey);

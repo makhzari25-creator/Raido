@@ -15,7 +15,7 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px}
   h2{margin:0 0 10px;font-size:16px}
   label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
-  input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit}
   input[dir=ltr]{text-align:left}
   button{padding:11px 16px;border:0;border-radius:12px;background:var(--brand);color:#fff;font:inherit;font-weight:700;cursor:pointer}
   button.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
@@ -30,6 +30,7 @@
   th{color:var(--muted);font-weight:600} .tag{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--line);font-size:12px}
   .tag.p{background:#ccfbf1;color:#0f766e} .msg{font-size:13px;margin-top:8px;min-height:1.2em} .err{color:var(--bad)} .ok{color:var(--brand)}
   .scroll{overflow-x:auto}
+  .hint{font-size:12px;color:var(--muted);margin:0 0 6px}
 </style>
 </head>
 <body>
@@ -44,13 +45,14 @@
   </section>
 
   <div id="app" hidden>
-    <section class="card">
+    <div class="row" id="tabs" style="margin-bottom:12px"><button id="tMain">مدیریت</button><button class="ghost" id="tDep">جدول استهلاک</button></div>
+    <section data-tab="main" class="card">
       <h2>آمار <button class="ghost" id="refresh" style="float:left;padding:4px 12px;font-size:13px">بروزرسانی</button></h2>
       <div class="grid" id="stats"></div>
       <div class="msg" id="versions"></div>
     </section>
 
-    <section class="card">
+    <section data-tab="main" class="card">
       <h2>ساخت کد فعال‌سازی</h2>
       <label>نوع پلن</label>
       <select id="plan">
@@ -70,7 +72,7 @@
       <div class="msg" id="mkMsg"></div>
     </section>
 
-    <section class="card">
+    <section data-tab="main" class="card">
       <h2>اعطای مستقیم اشتراک به شماره</h2>
       <label>شماره موبایل (۰۹…)</label>
       <input id="gPhone" dir="ltr" inputmode="numeric" maxlength="11" placeholder="09123456789">
@@ -83,7 +85,7 @@
       <div class="msg" id="gMsg"></div>
     </section>
 
-    <section class="card">
+    <section data-tab="main" class="card">
       <h2>مسدودسازی و لغو اشتراک</h2>
       <label>شماره موبایل (۰۹…)</label>
       <input id="bPhone" dir="ltr" inputmode="numeric" maxlength="11" placeholder="09123456789">
@@ -97,7 +99,17 @@
       <div class="msg" id="bMsg"></div>
     </section>
 
-    <section class="card">
+    <section data-tab="dep" class="card">
+      <h2>جدول استهلاک خودروها</h2>
+      <p class="hint" id="depInfo">در حال بارگذاری…</p>
+      <label>محتوای جدول (JSON: families و data) — می‌توانی فایل dep.json را انتخاب کنی یا مستقیم ویرایش کنی</label>
+      <input id="depFile" type="file" accept=".json,application/json">
+      <textarea id="depText" dir="ltr" rows="10" style="width:100%;font-family:monospace;font-size:12px"></textarea>
+      <div class="row" style="margin-top:12px"><button id="depSave">ذخیره و ارسال به اپ‌ها</button><button class="ghost" id="depReload">بارگذاری مجدد از سرور</button></div>
+      <div class="msg" id="depMsg"></div>
+    </section>
+
+    <section data-tab="main" class="card">
       <h2>ویدیوی آموزشی فعال‌سازی دسترسی‌ها</h2>
       <label>لینک ویدیو (https://…؛ خالی = دکمه در اپ پیام «هنوز آماده نیست» می‌دهد)</label>
       <input id="tutUrl" dir="ltr" placeholder="https://...">
@@ -105,7 +117,7 @@
       <div class="msg" id="tutMsg"></div>
     </section>
 
-    <section class="card">
+    <section data-tab="main" class="card">
       <h2>کاربران</h2>
       <div class="row"><input id="q" dir="ltr" placeholder="جستجوی شماره یا ایمیل…"><button class="ghost" id="search" style="flex:0 0 auto">جستجو</button></div>
       <div class="scroll"><table id="users"><thead><tr><th>شماره</th><th>روش ورود</th><th>پلن</th><th>انقضا</th><th>آخرین فعالیت</th><th>وضعیت</th></tr></thead><tbody></tbody></table></div>
@@ -146,6 +158,35 @@ async function loadUsers() {
     return `<tr><td dir="ltr">${u.phone || "—"}${u.phone_verified === false ? " <small class=err>تأییدنشده</small>" : ""}${u.email ? "<br><small dir=ltr>" + u.email + "</small>" : ""}</td><td>${via}</td><td><span class="tag ${sub && sub.is_premium ? "p" : ""}">${PLAN_FA[sub ? sub.plan : "NONE"] || "—"}</span></td><td>${active ? dt(sub.expires_at) : "<span class=err>منقضی/ندارد</span>"}</td><td>${dt(u.last_seen)}</td><td>${u.banned ? "<span class=err>مسدود</span>" : "—"}</td></tr>`;
   }).join("") || `<tr><td colspan="6">کاربری یافت نشد</td></tr>`;
 }
+function showTab(t) {
+  document.querySelectorAll("[data-tab]").forEach((e) => { e.hidden = e.dataset.tab !== t; });
+  $("tMain").className = t === "main" ? "" : "ghost"; $("tDep").className = t === "dep" ? "" : "ghost";
+}
+$("tMain").onclick = () => showTab("main"); $("tDep").onclick = () => showTab("dep");
+showTab("main");
+async function loadDep() {
+  try {
+    const r = await call({ action: "get_dep" });
+    let txt = r.dep_table || "";
+    try { txt = JSON.stringify(JSON.parse(txt), null, 1); } catch (e) {}
+    $("depText").value = txt;
+    $("depInfo").textContent = r.dep_version ? "نسخهٔ فعلی روی سرور: " + r.dep_version : "هنوز جدولی روی سرور نیست؛ اپ از جدول داخلی خودش استفاده می‌کند.";
+  } catch (e) { $("depInfo").textContent = "خطا در بارگذاری: " + e.message; }
+}
+$("depFile").onchange = async (ev) => { const f = ev.target.files[0]; if (f) $("depText").value = await f.text(); };
+$("depReload").onclick = loadDep;
+$("depSave").onclick = async () => {
+  const m = $("depMsg");
+  try {
+    JSON.parse($("depText").value);
+  } catch (e) { m.className = "msg err"; m.textContent = "JSON معتبر نیست: " + e.message; return; }
+  if (!confirm("جدول جدید برای همهٔ کاربران اعمال شود؟")) return;
+  try {
+    const r = await call({ action: "set_dep", dep_table: $("depText").value });
+    m.className = "msg ok"; m.textContent = "ذخیره شد. اپ‌ها در همگام‌سازی بعدی (حداکثر چند ساعت) به‌روز می‌شوند. نسخه: " + r.dep_version;
+    loadDep();
+  } catch (e) { m.className = "msg err"; m.textContent = "رد شد: " + e.message; }
+};
 async function loadTut() {
   try { const r = await call({ action: "get_settings" }); $("tutUrl").value = (r.settings && r.settings.tutorial_url) || ""; } catch (e) {}
 }
@@ -157,7 +198,7 @@ $("tutSave").onclick = async () => {
 };
 async function enter() {
   $("loginCard").hidden = true; $("app").hidden = false;
-  await Promise.all([loadStats(), loadUsers(), loadTut()]);
+  await Promise.all([loadStats(), loadUsers(), loadTut(), loadDep()]);
 }
 $("loginBtn").onclick = async () => {
   KEY = $("key").value.trim(); $("loginMsg").textContent = "";

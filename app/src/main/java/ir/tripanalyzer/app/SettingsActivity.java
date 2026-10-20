@@ -58,15 +58,14 @@ public final class SettingsActivity extends BaseActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        LinearLayout shell = new LinearLayout(this);
+        shell.setOrientation(LinearLayout.VERTICAL);
+        shell.setBackgroundColor(0xFFF1F5F9);
+        shell.addView(buildHeader(), new LinearLayout.LayoutParams(-1, dp(176)));
         ScrollView scroll = new ScrollView(this);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(24), dp(20), dp(32));
-        root.setBackgroundColor(0xE60B1220);
-
-        root.addView(pageTitle("تنظیمات"));
-        
-        root.addView(pageSub("خودرو، سوخت، کف تحلیلی، هدف ایده‌آل و مدت کارت"));
+        root.setPadding(dp(14), dp(14), dp(14), dp(28));
 
         // محدوده فعالیت
         LinearLayout zoneCard = card();
@@ -79,6 +78,8 @@ public final class SettingsActivity extends BaseActivity {
         Button zoneBtn = new Button(this);
         zoneBtn.setText("تنظیم محدوده فعالیت");
         zoneBtn.setAllCaps(false);
+        zoneBtn.setTextColor(Color.WHITE);
+        zoneBtn.setBackground(rounded(PRIMARY, PRIMARY));
         zoneBtn.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 startActivity(new Intent(SettingsActivity.this, ActivityZoneActivity.class));
@@ -91,7 +92,7 @@ public final class SettingsActivity extends BaseActivity {
         zoneHint.setTextSize(11.5f);
         zoneHint.setPadding(0, dp(6), 0, 0);
         zoneCard.addView(zoneHint);
-        root.addView(zoneCard);
+        root.addView(group(R.drawable.ic_mn_zone, 0xFFDBEAFE, "محدوده فعالیت", "نقشه، شعاع و محدودیت منطقه", zoneCard, false));
 
         // پروفایل
         LinearLayout profileCard = card();
@@ -124,8 +125,7 @@ public final class SettingsActivity extends BaseActivity {
             }
         });
         profileCard.addView(photoBtn);
-        root.addView(profileCard);
-        addSpace(root, 16);
+        root.addView(group(R.drawable.ic_st_user, 0xFFE0E7FF, "پروفایل", "نام نمایشی و عکس", profileCard, false));
 
 
         SharedPreferences prefs = Store.INSTANCE.prefs(this);
@@ -160,8 +160,7 @@ public final class SettingsActivity extends BaseActivity {
         depLp.topMargin = dp(12);
         depBtn.setLayoutParams(depLp);
         vehicle.addView(depBtn);
-        root.addView(vehicle);
-        addSpace(root, 14);
+        root.addView(group(R.drawable.ic_st_car, 0xFFDBEAFE, "خودرو", "برند، کارکرد و جدول استهلاک", vehicle, false));
 
         // Fuel card
         LinearLayout fuel = card();
@@ -181,8 +180,7 @@ public final class SettingsActivity extends BaseActivity {
         fuel.addView(fieldLabel("کارمزد اسنپ (درصد)"));
         commissionInput = input(str(prefs.getFloat("commission", 22f)), InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
         fuel.addView(commissionInput);
-        root.addView(fuel);
-        addSpace(root, 14);
+        root.addView(group(R.drawable.ic_st_fuel, 0xFFFEF3C7, "سوخت و استهلاک", "مصرف، قیمت سوخت، استهلاک و کارمزد", fuel, false));
 
         // کف تحلیلی
         LinearLayout floorCard = card();
@@ -196,8 +194,7 @@ public final class SettingsActivity extends BaseActivity {
         floorHint.setTextColor(0xFF64748B);
         floorHint.setPadding(0, (int)(8*getResources().getDisplayMetrics().density), 0, 0);
         floorCard.addView(floorHint);
-        root.addView(floorCard);
-        addSpace(root, 14);
+        root.addView(group(R.drawable.ic_st_flag, 0xFFDCFCE7, "کف درآمد تحلیلی", "زیر این مبلغ قرمز می‌شود", floorCard, false));
 
         // هدف ایده‌آل
         LinearLayout target = card();
@@ -211,8 +208,7 @@ public final class SettingsActivity extends BaseActivity {
         targetHint.setTextColor(0xFF64748B);
         targetHint.setPadding(0, (int)(8*getResources().getDisplayMetrics().density), 0, 0);
         target.addView(targetHint);
-        root.addView(target);
-        addSpace(root, 14);
+        root.addView(group(R.drawable.ic_st_flag, 0xFFDCFCE7, "هدف درآمد", "درآمد ساعتی ایده‌آل", target, false));
 
         LinearLayout speedNote = card();
         speedNote.addView(sectionTitle("تخمین مسافت"));
@@ -221,8 +217,7 @@ public final class SettingsActivity extends BaseActivity {
         note.setTextSize(13f);
         note.setTextColor(0xFF64748B);
         speedNote.addView(note);
-        root.addView(speedNote);
-        addSpace(root, 20);
+        root.addView(group(R.drawable.ic_st_gear, 0xFFE2E8F0, "تخمین مسافت", "وقتی کیلومتر در درخواست نیست", speedNote, false));
 
         // مدت نمایش کارت تحلیل روی اسنپ
         LinearLayout overlayCard = card();
@@ -241,8 +236,8 @@ public final class SettingsActivity extends BaseActivity {
         ovHint.setTextColor(0xFF64748B);
         ovHint.setPadding(0, (int)(8*getResources().getDisplayMetrics().density), 0, 0);
         overlayCard.addView(ovHint);
-        root.addView(overlayCard);
-        addSpace(root, 14);
+        root.addView(group(R.drawable.ic_st_eye, 0xFFE0F2FE, "نمایش کارت تحلیل", "مدت نمایش روی صفحهٔ اسنپ", overlayCard, false));
+        addSpace(root, 6);
 
         Button save = primaryBtn("ذخیره تنظیمات");
         save.setOnClickListener(new View.OnClickListener() {
@@ -264,7 +259,129 @@ public final class SettingsActivity extends BaseActivity {
         root.addView(reset);
 
         scroll.addView(root);
-        setContentView(scroll);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        setContentView(shell);
+    }
+
+    /** هدر: تصویر جاده + گرادیان آبی رایدو + دکمهٔ بازگشت */
+    private View buildHeader() {
+        android.widget.FrameLayout head = new android.widget.FrameLayout(this);
+        ImageView road = new ImageView(this);
+        road.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        try { road.setImageResource(R.drawable.bg_road); } catch (Throwable ignored) {}
+        head.addView(road, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        View shade = new View(this);
+        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x990F172A, 0xE61E3A8A}));
+        head.addView(shade, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        LinearLayout in = new LinearLayout(this);
+        in.setOrientation(LinearLayout.VERTICAL);
+        in.setPadding(dp(18), dp(16), dp(18), dp(16));
+        TextView back = new TextView(this);
+        back.setText("→");
+        back.setTextColor(Color.WHITE);
+        back.setTextSize(20f);
+        back.setGravity(android.view.Gravity.CENTER);
+        GradientDrawable bb = new GradientDrawable();
+        bb.setShape(GradientDrawable.OVAL);
+        bb.setColor(0x33FFFFFF);
+        bb.setStroke(dp(1), 0x55FFFFFF);
+        back.setBackground(bb);
+        back.setOnClickListener(v -> finish());
+        in.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(14), 0, 0);
+        ImageView g = new ImageView(this);
+        g.setImageResource(R.drawable.ic_st_gear);
+        g.setColorFilter(0xFF2563EB);
+        g.setPadding(dp(9), dp(9), dp(9), dp(9));
+        GradientDrawable gc = new GradientDrawable();
+        gc.setShape(GradientDrawable.OVAL);
+        gc.setColor(Color.WHITE);
+        g.setBackground(gc);
+        row.addView(g, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        TextView t = new TextView(this);
+        t.setText("تنظیمات");
+        t.setTextColor(Color.WHITE);
+        t.setTextSize(24f);
+        t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setPaddingRelative(dp(12), 0, 0, 0);
+        row.addView(t);
+        in.addView(row);
+        TextView sub = new TextView(this);
+        sub.setText("خودرو، سوخت، کف تحلیلی، هدف ایده‌آل و مدت کارت");
+        sub.setTextColor(0xE6FFFFFF);
+        sub.setTextSize(13f);
+        sub.setPadding(0, dp(8), 0, 0);
+        in.addView(sub);
+        head.addView(in, new android.widget.FrameLayout.LayoutParams(-1, -2));
+        return head;
+    }
+
+    /** گروه تاشونده: آیکون + عنوان + توضیح + فلش؛ محتوای اصلی فیلدها بدون تغییر داخلش است. */
+    private View group(int icon, int tint, String title, String subtitle, final LinearLayout body, boolean open) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Color.WHITE);
+        bg.setCornerRadius(dp(20));
+        bg.setStroke(dp(1), CARD_BORDER);
+        box.setBackground(bg);
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, -2);
+        blp.bottomMargin = dp(12);
+        box.setLayoutParams(blp);
+        try { box.setElevation(dp(1)); } catch (Throwable ignored) {}
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        head.setPadding(dp(14), dp(14), dp(14), dp(14));
+        ImageView ic = new ImageView(this);
+        ic.setImageResource(icon);
+        ic.setColorFilter(PRIMARY);
+        ic.setPadding(dp(11), dp(11), dp(11), dp(11));
+        GradientDrawable ig = new GradientDrawable();
+        ig.setCornerRadius(dp(14));
+        ig.setColor(tint);
+        ic.setBackground(ig);
+        head.addView(ic, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setPaddingRelative(dp(12), 0, dp(8), 0);
+        TextView tt = new TextView(this);
+        tt.setText(title);
+        tt.setTextSize(15.5f);
+        tt.setTypeface(Typeface.DEFAULT_BOLD);
+        tt.setTextColor(TEXT_DARK);
+        TextView st = new TextView(this);
+        st.setText(subtitle);
+        st.setTextSize(12f);
+        st.setTextColor(TEXT_MUTED);
+        st.setPadding(0, dp(2), 0, 0);
+        col.addView(tt);
+        col.addView(st);
+        head.addView(col, new LinearLayout.LayoutParams(0, -2, 1f));
+        final ImageView chev = new ImageView(this);
+        chev.setImageResource(R.drawable.ic_mn_chev);
+        chev.setColorFilter(0xFF94A3B8);
+        head.addView(chev, new LinearLayout.LayoutParams(dp(24), dp(24)));
+        box.addView(head);
+
+        body.setBackground(null);
+        body.setPadding(dp(14), 0, dp(14), dp(14));
+        LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(-1, -2);
+        body.setLayoutParams(bodyLp);
+        body.setVisibility(open ? View.VISIBLE : View.GONE);
+        chev.setRotation(open ? -90f : 0f);
+        box.addView(body);
+        head.setOnClickListener(v -> {
+            boolean show = body.getVisibility() != View.VISIBLE;
+            body.setVisibility(show ? View.VISIBLE : View.GONE);
+            chev.setRotation(show ? -90f : 0f);
+        });
+        return box;
     }
 
     private void calcDep() {
@@ -369,6 +486,7 @@ public final class SettingsActivity extends BaseActivity {
         v.setTypeface(Typeface.DEFAULT_BOLD);
         v.setTextColor(TEXT_DARK);
         v.setPadding(0, 0, 0, dp(10));
+        v.setVisibility(View.GONE);
         return v;
     }
 
@@ -387,7 +505,7 @@ public final class SettingsActivity extends BaseActivity {
         e.setInputType(type);
         e.setTextSize(15f);
         e.setTextColor(TEXT_DARK);
-        e.setBackground(rounded(Color.WHITE, CARD_BORDER));
+        e.setBackground(rounded(0xFFF8FAFC, CARD_BORDER));
         e.setPadding(dp(14), dp(12), dp(14), dp(12));
         e.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
         return e;
@@ -423,10 +541,10 @@ public final class SettingsActivity extends BaseActivity {
         b.setTextColor(Color.WHITE);
         b.setTextSize(15f);
         b.setTypeface(Typeface.DEFAULT_BOLD);
-        GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(12));
-        g.setColor(PRIMARY);
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xFF3B82F6, 0xFF2563EB});
+        g.setCornerRadius(dp(14));
         b.setBackground(g);
+        b.setGravity(android.view.Gravity.CENTER);
         b.setPadding(dp(12), dp(12), dp(12), dp(12));
         return b;
     }
