@@ -70,7 +70,22 @@ public final class RecentRequests {
         return null;
     }
 
+    /** همان اعداد (قیمت + کیلومترها) که تا windowMs پیش ذخیره شده؛ آدرس در نظر گرفته نمی‌شود */
+    public static JSONObject findBySig(Context c, String sig, long windowMs) {
+        JSONArray a = load(c);
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < a.length(); i++) {
+            JSONObject o = a.optJSONObject(i);
+            if (o != null && sig.equals(o.optString("sig")) && now - o.optLong("saved", 0L) < windowMs) return o;
+        }
+        return null;
+    }
+
     public static void put(Context c, String key, String base, JSONObject rec, boolean estimated) {
+        put(c, key, base, rec, estimated, "");
+    }
+
+    public static void put(Context c, String key, String base, JSONObject rec, boolean estimated, String sig) {
         try {
             JSONArray a = load(c);
             JSONArray next = new JSONArray();
@@ -79,6 +94,8 @@ public final class RecentRequests {
             e.put("base", base);
             e.put("est", estimated);
             e.put("at", System.currentTimeMillis());
+            e.put("saved", System.currentTimeMillis());
+            e.put("sig", sig == null ? "" : sig);
             e.put("rec", rec);
             next.put(e);
             long ts = rec.optLong("ts", -1);

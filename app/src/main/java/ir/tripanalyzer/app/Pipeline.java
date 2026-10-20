@@ -59,8 +59,6 @@ public final class Pipeline {
 
     // هر تغییر متن صفحه (مثلاً شمارندهٔ ثانیه) یک ترد تحلیل جدید می‌سازد؛ برای یک درخواست فقط یکی باید کار کند.
     private static final java.util.Set<String> IN_FLIGHT = new java.util.HashSet<>();
-    private static String lastDoneSig = "";
-    private static long lastDoneAt = 0L;
 
     private static boolean acquire(String k) {
         synchronized (IN_FLIGHT) { return IN_FLIGHT.add(k); }
@@ -135,6 +133,7 @@ public final class Pipeline {
             } catch (Throwable ignored) {}
             final String reqKey = signatureOf + "#" + addrKey;
             final String baseKey = String.valueOf(parse.getFare()) + "#" + addrKey;
+            final String[] reqKeyHolder = new String[]{reqKey};
 
             // در حال تحلیل همین درخواست (قیمت/کیلومتر/دقیقه یکسان) → نادیده بگیر
             final String sigKey = "sig:" + signatureOf;
@@ -143,10 +142,18 @@ public final class Pipeline {
             // ۱) همین درخواست قبلاً تحلیل و ثبت شده → نتیجهٔ ذخیره‌شده، بدون ثبت و تحلیل دوباره
             try {
                 org.json.JSONObject hit = RecentRequests.find(applicationContext, reqKey);
+                boolean sigHit = false;
+                if (hit == null && (parse.getPickupKm() != null || parse.getTripKm() != null)) {
+                    // قانون ۳۰ ثانیه: همان قیمت + کیلومترها → تحلیل مجدد/ذخیرهٔ مجدد نشود (نتیجهٔ ذخیره‌شده نمایش داده می‌شود)
+                    hit = RecentRequests.findBySig(applicationContext, signatureOf, 30000L);
+                    sigHit = hit != null;
+                }
                 if (hit != null && hit.optJSONObject("rec") != null) {
+                    if (sigHit) { reqKeyHolder[0] = hit.optString("key", reqKey); }
                     org.json.JSONObject stored = hit.optJSONObject("rec");
-                    RecentRequests.touch(applicationContext, reqKey);
-                    if (RecentRequests.isCurrent(applicationContext, reqKey, 60000L)) {
+                    final String hk = reqKeyHolder[0];
+                    RecentRequests.touch(applicationContext, hk);
+                    if (RecentRequests.isCurrent(applicationContext, hk, 60000L)) {
                         RecentRequests.touchCurrent(applicationContext);
                         return; // همان صفحه هنوز باز است؛ فقط ادامه
                     }
@@ -155,19 +162,11 @@ public final class Pipeline {
                     if (!stored.optBoolean("duringTrip", false) && pr.getFirst().getVerdict() != Verdict.GRAY) {
                         Store.INSTANCE.saveActiveTrip(applicationContext, stored);
                     }
-                    RecentRequests.markCurrent(applicationContext, reqKey);
+                    RecentRequests.markCurrent(applicationContext, hk);
                     Notifier.INSTANCE.show(applicationContext, pr.getFirst(), pr.getSecond().longValue(), false, parse.getFare());
                     return;
                 }
             } catch (Throwable ignored) {}
-
-            // همان اعداد تا ۲۰ ثانیه پیش تحلیل شده (آدرس در پارس‌های مختلف کمی فرق کرده) → دوباره ثبت نکن
-            synchronized (IN_FLIGHT) {
-                if (signatureOf.equals(lastDoneSig) && System.currentTimeMillis() - lastDoneAt < 20000L) {
-                    lastDoneAt = System.currentTimeMillis();
-                    return;
-                }
-            }
 
             // ۲) همان درخواست با کیلومتر تخمینی ثبت شده و حالا کیلومتر واقعی رسید → به‌روزرسانی همان ثبت
             boolean isFresh = true;
@@ -286,9 +285,8 @@ public final class Pipeline {
                     } catch (Throwable ignored) {}
                     try {
                         boolean estimated = analyze.getDistanceSource() != DataSource.REAL;
-                        RecentRequests.put(applicationContext, reqKey, baseKey, rec, estimated);
+                        RecentRequests.put(applicationContext, reqKey, baseKey, rec, estimated, signatureOf);
                         RecentRequests.markCurrent(applicationContext, reqKey);
-                        synchronized (IN_FLIGHT) { lastDoneSig = signatureOf; lastDoneAt = System.currentTimeMillis(); }
                     } catch (Throwable ignored) {}
                     ReportAutoSave.INSTANCE.markPending(applicationContext);
                     // همگام‌سازی کم‌هزینه و محدودشده (فقط وقتی موعدش رسیده باشد؛ روی ترد جدا)
