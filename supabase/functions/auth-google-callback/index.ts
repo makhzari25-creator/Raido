@@ -52,11 +52,16 @@ Deno.serve(async (req) => {
     const email = String(claims.email).toLowerCase();
 
     let userId: string | null = null;
-    const { data: ex } = await db.from("users").select("id").eq("google_sub", sub).maybeSingle();
+    const { data: ex } = await db.from("users").select("id, banned").eq("google_sub", sub).maybeSingle();
     if (ex) {
       userId = ex.id;
     } else {
+      // یک شماره = یک حساب. اگر این شماره قبلاً ثبت شده، با شمارهٔ تایپ‌شده نمی‌شود واردش شد
+      // (شماره تأییدنشده است)؛ صاحب شماره باید با همان روش قبلی وارد شود.
+      const { data: byPhone } = await db.from("users").select("id").eq("phone", ls.contact_phone).maybeSingle();
+      if (byPhone) return back(state, false, "phone_taken");
       const { data: created, error } = await db.from("users").insert({
+        phone: ls.contact_phone, phone_verified: false, signup_via: "google", last_via: "google",
         google_sub: sub, email, email_norm: normEmail(email), contact_phone: ls.contact_phone,
       }).select("id").single();
       if (error || !created) return back(state, false, "server");

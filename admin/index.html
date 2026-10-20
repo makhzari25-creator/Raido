@@ -98,9 +98,17 @@
     </section>
 
     <section class="card">
+      <h2>ویدیوی آموزشی فعال‌سازی دسترسی‌ها</h2>
+      <label>لینک ویدیو (https://…؛ خالی = دکمه در اپ پیام «هنوز آماده نیست» می‌دهد)</label>
+      <input id="tutUrl" dir="ltr" placeholder="https://...">
+      <div class="row" style="margin-top:12px"><button id="tutSave">ذخیره لینک</button></div>
+      <div class="msg" id="tutMsg"></div>
+    </section>
+
+    <section class="card">
       <h2>کاربران</h2>
-      <div class="row"><input id="q" dir="ltr" inputmode="numeric" placeholder="جستجوی شماره…"><button class="ghost" id="search" style="flex:0 0 auto">جستجو</button></div>
-      <div class="scroll"><table id="users"><thead><tr><th>شماره</th><th>پلن</th><th>انقضا</th><th>آخرین فعالیت</th><th>وضعیت</th></tr></thead><tbody></tbody></table></div>
+      <div class="row"><input id="q" dir="ltr" placeholder="جستجوی شماره یا ایمیل…"><button class="ghost" id="search" style="flex:0 0 auto">جستجو</button></div>
+      <div class="scroll"><table id="users"><thead><tr><th>شماره</th><th>روش ورود</th><th>پلن</th><th>انقضا</th><th>آخرین فعالیت</th><th>وضعیت</th></tr></thead><tbody></tbody></table></div>
     </section>
   </div>
 </main>
@@ -134,12 +142,22 @@ async function loadUsers() {
     const sub = Array.isArray(u.subscriptions) ? u.subscriptions[0] : u.subscriptions;
     const exp = sub && sub.expires_at ? new Date(sub.expires_at) : null;
     const active = exp && exp > new Date();
-    return `<tr><td dir="ltr">${u.phone}</td><td><span class="tag ${sub && sub.is_premium ? "p" : ""}">${PLAN_FA[sub ? sub.plan : "NONE"] || "—"}</span></td><td>${active ? dt(sub.expires_at) : "<span class=err>منقضی/ندارد</span>"}</td><td>${dt(u.last_seen)}</td><td>${u.banned ? "<span class=err>مسدود</span>" : "—"}</td></tr>`;
-  }).join("") || `<tr><td colspan="5">کاربری یافت نشد</td></tr>`;
+    const via = (u.signup_via === "google" ? "گوگل" : "تلگرام") + (u.last_via && u.last_via !== u.signup_via ? " (اخیر: " + (u.last_via === "google" ? "گوگل" : "تلگرام") + ")" : "");
+    return `<tr><td dir="ltr">${u.phone || "—"}${u.phone_verified === false ? " <small class=err>تأییدنشده</small>" : ""}${u.email ? "<br><small dir=ltr>" + u.email + "</small>" : ""}</td><td>${via}</td><td><span class="tag ${sub && sub.is_premium ? "p" : ""}">${PLAN_FA[sub ? sub.plan : "NONE"] || "—"}</span></td><td>${active ? dt(sub.expires_at) : "<span class=err>منقضی/ندارد</span>"}</td><td>${dt(u.last_seen)}</td><td>${u.banned ? "<span class=err>مسدود</span>" : "—"}</td></tr>`;
+  }).join("") || `<tr><td colspan="6">کاربری یافت نشد</td></tr>`;
 }
+async function loadTut() {
+  try { const r = await call({ action: "get_settings" }); $("tutUrl").value = (r.settings && r.settings.tutorial_url) || ""; } catch (e) {}
+}
+$("tutSave").onclick = async () => {
+  try {
+    await call({ action: "set_setting", key: "tutorial_url", value: $("tutUrl").value });
+    $("tutMsg").className = "msg ok"; $("tutMsg").textContent = "ذخیره شد؛ بدون نیاز به به‌روزرسانی اپ اعمال می‌شود.";
+  } catch (e) { $("tutMsg").className = "msg err"; $("tutMsg").textContent = e.message === "bad_url" ? "لینک باید با https:// شروع شود" : "خطا: " + e.message; }
+};
 async function enter() {
   $("loginCard").hidden = true; $("app").hidden = false;
-  await Promise.all([loadStats(), loadUsers()]);
+  await Promise.all([loadStats(), loadUsers(), loadTut()]);
 }
 $("loginBtn").onclick = async () => {
   KEY = $("key").value.trim(); $("loginMsg").textContent = "";

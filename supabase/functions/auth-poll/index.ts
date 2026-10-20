@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     await db.rpc("end_other_sessions", { p_user: ls.user_id });
     const ins = await db.from("sessions").insert({ token_hash: await sha256Hex(token), user_id: ls.user_id, device_fp: fp });
     if (ins.error) throw new Error("session insert: " + ins.error.message);
-    await db.from("users").update({ last_seen: new Date().toISOString() }).eq("id", ls.user_id);
+    await db.from("users").update({ last_seen: new Date().toISOString(), last_via: ls.via ?? "telegram" }).eq("id", ls.user_id);
 
     return json({ status: "ok", token, ...signed });
   } catch (e) {

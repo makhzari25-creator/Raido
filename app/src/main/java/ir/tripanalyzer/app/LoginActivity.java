@@ -32,7 +32,6 @@ public final class LoginActivity extends BaseActivity {
     private TextView diagTv;
     private Button loginBtn;
     private Button googleBtn;
-    private android.widget.EditText emailEt;
     private android.widget.EditText phoneEt;
     private final AtomicBoolean polling = new AtomicBoolean(false);
     private volatile boolean alive = true;
@@ -79,6 +78,7 @@ public final class LoginActivity extends BaseActivity {
         if (d != null && "0".equals(d.getQueryParameter("ok")) && statusTv != null) {
             String e = String.valueOf(d.getQueryParameter("e"));
             String m = "denied".equals(e) ? "ورود با گوگل لغو شد"
+                    : "phone_taken".equals(e) ? "این شماره قبلاً ثبت شده؛ با همان روش قبلی (مثلاً تلگرام) وارد شو"
                     : "unverified".equals(e) ? "ایمیل گوگل تأیید‌شده نیست"
                     : "expired".equals(e) ? "درخواست منقضی شد؛ دوباره امتحان کن"
                     : "خطا در ورود با گوگل؛ دوباره امتحان کن";
@@ -199,10 +199,20 @@ public final class LoginActivity extends BaseActivity {
         TextView hint = tv("ایمیل و شمارهٔ موبایل برای پشتیبانی و جلوگیری از ثبت‌نام تکراری است.", 13f, 0xFF64748B, false);
         hint.setPadding(0, dp(4), 0, dp(10));
         card.addView(hint);
-        emailEt = field("ایمیل (اختیاری)", android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
-        card.addView(emailEt);
-        phoneEt = field("شمارهٔ موبایل (مثلاً ۰۹۱۲۳۴۵۶۷۸۹)", android.text.InputType.TYPE_CLASS_PHONE);
+        phoneEt = field("شمارهٔ موبایل", android.text.InputType.TYPE_CLASS_PHONE);
+        phoneEt.setTextDirection(View.TEXT_DIRECTION_LTR);
+        phoneEt.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
+        phoneEt.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(14)});
+        phoneEt.setTextSize(17f);
+        phoneEt.addTextChangedListener(new android.text.TextWatcher() {
+            public void beforeTextChanged(CharSequence a, int b, int c, int d) {}
+            public void onTextChanged(CharSequence a, int b, int c, int d) {}
+            public void afterTextChanged(android.text.Editable e) { refreshEnabled(); }
+        });
         card.addView(phoneEt);
+        TextView ex = tv("مثال: 09123456789 — شمارهٔ تو یک‌بار ثبت می‌شود و با آن از هر دستگاه می‌توانی دوباره وارد شوی.", 12f, 0xFF64748B, false);
+        ex.setPadding(0, dp(6), 0, 0);
+        card.addView(ex);
 
         googleBtn = new Button(this);
         googleBtn.setText("ورود با گوگل");
@@ -210,6 +220,8 @@ public final class LoginActivity extends BaseActivity {
         googleBtn.setTextSize(16f);
         googleBtn.setTypeface(Typeface.DEFAULT_BOLD);
         googleBtn.setTextColor(0xFF0F172A);
+        googleBtn.setGravity(Gravity.CENTER);
+        googleBtn.setPadding(dp(24), 0, dp(24), 0);
         googleBtn.setBackground(shp(Color.WHITE, 16, 0xFFCBD5E1));
         LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(-1, dp(54));
         glp.topMargin = dp(14);
@@ -243,6 +255,7 @@ public final class LoginActivity extends BaseActivity {
         blp.topMargin = dp(6);
         loginBtn.setLayoutParams(blp);
         loginBtn.setPadding(dp(24), 0, dp(24), 0);
+        loginBtn.setGravity(Gravity.CENTER);
         loginBtn.setOnClickListener(v -> startLogin());
         card.addView(loginBtn);
 
@@ -276,6 +289,7 @@ public final class LoginActivity extends BaseActivity {
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
         setContentView(shell);
         try { Fonts.INSTANCE.applyRecursive(shell); } catch (Throwable ignored) {}
+        refreshEnabled();
     }
 
     private android.widget.EditText field(String hint, int type) {
@@ -305,25 +319,34 @@ public final class LoginActivity extends BaseActivity {
         return b.toString();
     }
 
+    private boolean busy;
+
+    private String cleanPhone() {
+        if (phoneEt == null) return "";
+        return enDigits(phoneEt.getText().toString()).replaceAll("[\\s-]", "").replaceFirst("^(\\+98|0098|98)", "0");
+    }
+
+    private void refreshEnabled() {
+        boolean ok = !busy && cleanPhone().matches("^09[0-9]{9}$");
+        if (loginBtn != null) { loginBtn.setEnabled(ok); loginBtn.setAlpha(ok ? 1f : 0.45f); }
+        if (googleBtn != null) { googleBtn.setEnabled(ok); googleBtn.setAlpha(ok ? 1f : 0.45f); }
+    }
+
     private void busy(boolean b) {
-        if (loginBtn != null) loginBtn.setEnabled(!b);
-        if (googleBtn != null) googleBtn.setEnabled(!b);
+        busy = b;
+        refreshEnabled();
     }
 
     private void startGoogle() {
-        String phone = enDigits(phoneEt.getText().toString()).replaceAll("[\\s-]", "").replaceFirst("^(\\+98|0098|98)", "0");
-        String email = emailEt.getText().toString().trim();
-        if (!phone.matches("^09[0-9]{9}$")) { statusTv.setText("شمارهٔ موبایل را درست وارد کن (مثلاً ۰۹۱۲۳۴۵۶۷۸۹)"); return; }
-        if (!email.isEmpty() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            statusTv.setText("ایمیل معتبر نیست"); return;
-        }
+        String phone = cleanPhone();
+        if (!phone.matches("^09[0-9]{9}$")) { statusTv.setText("شمارهٔ موبایل را درست وارد کن (مثلاً 09123456789)"); return; }
         busy(true);
         statusTv.setText("در حال آماده‌سازی…");
-        final String ph = phone, em = email;
+        final String ph = phone;
         new Thread(() -> {
             try {
                 JSONObject b = new JSONObject().put("device_fp", LicenseStore.INSTANCE.getDeviceFingerprint(this))
-                        .put("phone", ph).put("email", em);
+                        .put("phone", ph);
                 JSONObject r = RaidoCloud.post("auth-google-start", b, null);
                 String code = r.optString("code");
                 String url = r.optString("url");
@@ -356,11 +379,13 @@ public final class LoginActivity extends BaseActivity {
     }
 
     private void startLogin() {
+        if (!cleanPhone().matches("^09[0-9]{9}$")) return;
         busy(true);
         statusTv.setText("در حال آماده‌سازی…");
         new Thread(() -> {
             try {
-                JSONObject b = new JSONObject().put("device_fp", LicenseStore.INSTANCE.getDeviceFingerprint(this));
+                JSONObject b = new JSONObject().put("device_fp", LicenseStore.INSTANCE.getDeviceFingerprint(this))
+                        .put("phone", cleanPhone());
                 JSONObject r = RaidoCloud.post("auth-start", b, null);
                 String code = r.optString("code");
                 String url = r.optString("bot_url");
@@ -376,6 +401,8 @@ public final class LoginActivity extends BaseActivity {
                         }
                     });
                     startPolling(code);
+                } else if (r.optInt("_http") == 400) {
+                    fail("شمارهٔ واردشده معتبر نیست");
                 } else if (r.optInt("_http") == 429) {
                     fail("تلاش زیاد؛ کمی بعد دوباره امتحان کن");
                 } else {
