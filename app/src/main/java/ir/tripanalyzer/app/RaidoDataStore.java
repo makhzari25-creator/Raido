@@ -114,7 +114,74 @@ public final class RaidoDataStore {
                 row.put("activityZoneStatus", recordFromStore.optString("activityZoneStatus"));
             }
             row.put("accepted", false);
+            row.put("seen", System.currentTimeMillis());
+            if (recordFromStore.has("pickupKm") && !recordFromStore.isNull("pickupKm")) {
+                row.put("pickupKm", recordFromStore.optDouble("pickupKm"));
+            }
+            if (recordFromStore.has("tripKm") && !recordFromStore.isNull("tripKm")) {
+                row.put("tripKm", recordFromStore.optDouble("tripKm"));
+            }
         return row;
+    }
+
+    /** نتیجهٔ جست‌وجوی ردیف قابل‌ادغام در لیست تحلیل‌ها */
+    public static final class MergeHit {
+        public long ts;
+        public boolean accepted;
+        public boolean hasKm;
+    }
+
+    /**
+     * «همان پیشنهاد» = همان کرایه، «رفته» نشده/یا رفته، در پنجرهٔ لغزان (از آخرین دیدن)،
+     * و بدون نشانهٔ قوی از تفاوت (مقصد هر دو پر ولی ناسازگار / کیلومتر واقعی هر دو با اختلاف >۰٫۵).
+     */
+    public synchronized MergeHit findMergeTarget(Context c, Double fare, String destNorm,
+                                                 Double pickupKm, Double tripKm, long windowMs) {
+        if (c == null || fare == null) return null;
+        try {
+            JSONArray arr = analysesArray(c);
+            if (arr == null) return null;
+            long now = System.currentTimeMillis();
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o == null || !o.has("fare") || o.isNull("fare")) continue;
+                if (Math.abs(o.optDouble("fare") - fare) >= 1.0) continue;
+                long last = Math.max(o.optLong("seen", 0L), o.optLong("ts", 0L));
+                if (last <= 0 || now - last >= windowMs) continue;
+                String od = RecentRequests.norm(o.optString("dest", ""));
+                if (destNorm != null && !destNorm.isEmpty() && !od.isEmpty()
+                        && !destNorm.contains(od) && !od.contains(destNorm)) continue;
+                boolean oldKm = o.has("pickupKm") || o.has("tripKm");
+                if (pickupKm != null && tripKm != null && o.has("pickupKm") && o.has("tripKm")) {
+                    double a = o.optDouble("pickupKm") + o.optDouble("tripKm");
+                    if (Math.abs(a - (pickupKm + tripKm)) > 0.5) continue;
+                }
+                MergeHit h = new MergeHit();
+                h.ts = o.optLong("ts", 0L);
+                h.accepted = o.optBoolean("accepted", false);
+                h.hasKm = oldKm;
+                return h;
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    /** تازه‌کردن «آخرین دیده‌شدن» ردیف (پنجرهٔ لغزان) بدون تغییر دیگر */
+    public synchronized void touchSeen(Context c, long ts) {
+        if (c == null || ts <= 0) return;
+        try {
+            JSONObject root = readRoot(c);
+            JSONArray arr = root.optJSONArray("analyses");
+            if (arr == null) return;
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.optJSONObject(i);
+                if (o != null && o.optLong("ts", -1) == ts) {
+                    o.put("seen", System.currentTimeMillis());
+                    writeRoot(c, root);
+                    return;
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     /** اگر ردیف قبلی با همین ts هست جایگزین می‌شود (کیلومتر واقعی رسید)، وگرنه اضافه. شمارنده دوباره زیاد نمی‌شود. */

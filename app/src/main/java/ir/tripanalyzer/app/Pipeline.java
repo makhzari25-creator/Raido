@@ -158,6 +158,7 @@ public final class Pipeline {
                 if (hit != null && hit.optJSONObject("rec") != null) {
                     org.json.JSONObject stored = hit.optJSONObject("rec");
                     final String hk = reqKeyHolder[0];
+                    try { RaidoDataStore.INSTANCE.touchSeen(applicationContext, stored.optLong("ts", 0L)); } catch (Throwable ignored) {}
                     RecentRequests.touch(applicationContext, hk);
                     if (RecentRequests.isCurrent(applicationContext, hk, 60000L)) {
                         RecentRequests.touchCurrent(applicationContext);
@@ -185,34 +186,20 @@ public final class Pipeline {
                     }
                 } catch (Throwable ignored) {}
             }
-            // قانون ۳۰ ثانیه: همان قیمت + همان اعداد و مقصد سازگار → همان سفر (مثلاً صفحهٔ قبل/بعد از «مشاهده جزئیات»)
-            // ردیف قبلی در جا با نتیجهٔ جدید (کامل‌تر) جایگزین می‌شود؛ ردیف جدید و شمارش جدید ساخته نمی‌شود.
-            if (upgradeOldTs <= 0L) {
+            // ادغام روی خودِ لیست تحلیل‌ها: همان کرایه در پنجرهٔ لغزان ۱۰ دقیقه → همان ردیف (کامل‌تر جایگزین می‌شود)
+            if (parse.getFare() != null) {
                 try {
-                    org.json.JSONObject sh = RecentRequests.findBySig(applicationContext, signatureOf, 30000L);
-                    if (sh != null && sh.optJSONObject("rec") != null) {
-                        org.json.JSONObject orec = sh.optJSONObject("rec");
-                        String nd = "";
-                        try { String[] ad2 = ParseLayer.INSTANCE.extractAddresses(rawText); nd = RecentRequests.norm(ad2[1]); } catch (Throwable ignored) {}
-                        String od = RecentRequests.norm(orec.optString("dest", ""));
-                        boolean compat = nd.isEmpty() || od.isEmpty() || nd.contains(od) || od.contains(nd);
-                        if (compat) upgradeOldTs = orec.optLong("ts", 0L);
-                    }
-                } catch (Throwable ignored) {}
-            }
-            // قیمت یکسان تا ۳۰ ثانیه پیش + یکی تخمینی/بی‌کیلومتر و دیگری دارای کیلومتر: همان سفر است
-            if (upgradeOldTs <= 0L) {
-                try {
-                    org.json.JSONObject fc = RecentRequests.findByFare(applicationContext, parse.getFare(), 30000L);
-                    if (fc != null && fc.optJSONObject("rec") != null && !signatureOf.equals(fc.optString("sig"))) {
-                        org.json.JSONObject frec = fc.optJSONObject("rec");
-                        boolean candEst = fc.optBoolean("est", false);
-                        if (candEst && legs.hasAnyKm()) {
-                            upgradeOldTs = frec.optLong("ts", 0L); // کامل‌تر شد → جایگزین
-                        } else if (!legs.hasAnyKm()) {
-                            // ناقص‌تر از ثبت قبلی است → همان نتیجهٔ ذخیره‌شده، ثبت دوباره نشود
-                            return;
+                    String nd = "";
+                    try { String[] ad3 = ParseLayer.INSTANCE.extractAddresses(rawText); nd = RecentRequests.norm(ad3[1]); } catch (Throwable ignored) {}
+                    RaidoDataStore.MergeHit mh = RaidoDataStore.INSTANCE.findMergeTarget(applicationContext,
+                            parse.getFare(), nd, parse.getPickupKm(), parse.getTripKm(), 10L * 60L * 1000L);
+                    if (mh != null) {
+                        if (mh.accepted) return; // سفر رفته؛ نه ردیف جدید نه تغییر
+                        if (!legs.hasAnyKm() && mh.hasKm) {
+                            RaidoDataStore.INSTANCE.touchSeen(applicationContext, mh.ts);
+                            return; // ناقص‌تر از ردیف قبلی
                         }
+                        upgradeOldTs = mh.ts;
                     }
                 } catch (Throwable ignored) {}
             }

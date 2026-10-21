@@ -42,37 +42,16 @@ public final class DetailsActivity extends BaseActivity {
         shell.setBackgroundColor(0xFFF1F5F9);
         shell.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
 
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(8), dp(14), dp(16), dp(14));
-        bar.setBackgroundColor(TEAL);
-        TextView back = new TextView(this);
-        back.setText("←");
-        back.setTextSize(22f);
-        back.setTextColor(Color.WHITE);
-        back.setPadding(dp(12), dp(4), dp(12), dp(4));
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { finish(); }
-        });
-        bar.addView(back);
-        TextView title = new TextView(this);
-        title.setText("جزئیات و تحلیل‌ها");
-        title.setTextSize(18f);
-        title.setTextColor(Color.WHITE);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
-        title.setGravity(Gravity.CENTER);
-        try { Fonts.INSTANCE.apply(title, true); } catch (Exception ignored) {}
-        bar.addView(title);
-        View pad = new View(this);
-        pad.setLayoutParams(new LinearLayout.LayoutParams(dp(48), 1));
-        bar.addView(pad);
-        shell.addView(bar);
+        shell.addView(buildHeader(), new LinearLayout.LayoutParams(-1, dp(150)));
 
         LinearLayout tabs = new LinearLayout(this);
         tabs.setOrientation(LinearLayout.HORIZONTAL);
-        tabs.setPadding(dp(12), dp(10), dp(12), dp(8));
+        tabs.setPadding(dp(4), dp(4), dp(4), dp(4));
+        GradientDrawable tabsBg = new GradientDrawable();
+        tabsBg.setColor(Color.WHITE);
+        tabsBg.setCornerRadius(dp(18));
+        tabsBg.setStroke(dp(1), CARD_BORDER);
+        tabs.setBackground(tabsBg);
         tabLast = tabBtn("آخرین نتیجه");
         tabDays = tabBtn("تحلیل‌های ۷ روز");
         tabLast.setOnClickListener(new View.OnClickListener() {
@@ -85,13 +64,15 @@ public final class DetailsActivity extends BaseActivity {
         tlp.setMargins(dp(4), 0, dp(4), 0);
         tabs.addView(tabLast, tlp);
         tabs.addView(tabDays, tlp);
-        shell.addView(tabs);
+        LinearLayout.LayoutParams tabsLp = new LinearLayout.LayoutParams(-1, -2);
+        tabsLp.setMargins(dp(14), dp(12), dp(14), dp(4));
+        shell.addView(tabs, tabsLp);
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         contentHost = new LinearLayout(this);
         contentHost.setOrientation(LinearLayout.VERTICAL);
-        contentHost.setPadding(dp(16), dp(8), dp(16), dp(32));
+        contentHost.setPadding(dp(14), dp(10), dp(14), dp(32));
         scroll.addView(contentHost);
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -105,7 +86,7 @@ public final class DetailsActivity extends BaseActivity {
         t.setText(label);
         t.setTextSize(14f);
         t.setGravity(Gravity.CENTER);
-        t.setPadding(dp(8), dp(12), dp(8), dp(12));
+        t.setPadding(dp(8), dp(11), dp(8), dp(11));
         t.setTypeface(Typeface.DEFAULT_BOLD);
         return t;
     }
@@ -116,11 +97,16 @@ public final class DetailsActivity extends BaseActivity {
     }
 
     private void styleTab(TextView t, boolean on) {
-        GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(12));
-        g.setColor(on ? TEAL : 0xFFE2E8F0);
-        t.setBackground(g);
-        t.setTextColor(on ? Color.WHITE : TEXT_MUTED);
+        if (on) {
+            GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0xFF3B82F6, 0xFF2563EB});
+            g.setCornerRadius(dp(14));
+            t.setBackground(g);
+            t.setTextColor(Color.WHITE);
+        } else {
+            t.setBackground(null);
+            t.setTextColor(0xFF475569);
+        }
     }
 
     private void render() {
@@ -160,6 +146,13 @@ public final class DetailsActivity extends BaseActivity {
         else if (verdict.contains("زرد") || vLow.contains("yellow")) verdictColor = 0xFFCA8A04;
 
         LinearLayout head = card();
+        try {
+            GradientDrawable hb = new GradientDrawable();
+            hb.setCornerRadius(dp(20));
+            hb.setColor((verdictColor & 0x00FFFFFF) | 0x1A000000);
+            hb.setStroke(dp(1), (verdictColor & 0x00FFFFFF) | 0x55000000);
+            head.setBackground(hb);
+        } catch (Throwable ignored) {}
         TextView vLabel = new TextView(this);
         vLabel.setText(verdictFa(verdict));
         vLabel.setTextSize(20f);
@@ -290,7 +283,7 @@ public final class DetailsActivity extends BaseActivity {
             went.setText("من این سفر رفتم");
             went.setTextSize(15f);
             went.setTextColor(Color.WHITE);
-            went.setBackgroundColor(0xFF16A34A);
+            styleSolid(went, 0xFF16A34A, 15);
             went.setPadding(dp(16), dp(14), dp(16), dp(14));
             final long ts = last.optLong("ts", 0);
             went.setOnClickListener(new View.OnClickListener() {
@@ -307,7 +300,7 @@ public final class DetailsActivity extends BaseActivity {
         reportBtn.setText("گزارش اشتباه تحلیل");
         reportBtn.setTextSize(15f);
         reportBtn.setTextColor(Color.WHITE);
-        reportBtn.setBackgroundColor(0xFFDC2626);
+        styleSolid(reportBtn, 0xFFDC2626, 15);
         reportBtn.setPadding(dp(16), dp(14), dp(16), dp(14));
         reportBtn.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -319,7 +312,7 @@ public final class DetailsActivity extends BaseActivity {
         editTrip.setText("ویرایش سفر / توقف / قیمت");
         editTrip.setTextSize(15f);
         editTrip.setTextColor(Color.WHITE);
-        editTrip.setBackgroundColor(0xFF0F766E);
+        styleSolid(editTrip, 0xFF2563EB, 15);
         editTrip.setPadding(dp(16), dp(14), dp(16), dp(14));
         editTrip.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -429,6 +422,13 @@ public final class DetailsActivity extends BaseActivity {
                 boolean acc = o.optBoolean("accepted", false);
                 LinearLayout rowCard = card();
                 String v = o.optString("verdict", "—");
+                try {
+                    GradientDrawable rb = new GradientDrawable();
+                    rb.setCornerRadius(dp(18));
+                    rb.setColor(Color.WHITE);
+                    rb.setStroke(dp(2), (verdictColor(v) & 0x00FFFFFF) | 0x66000000);
+                    rowCard.setBackground(rb);
+                } catch (Throwable ignored) {}
                 TextView line = new TextView(this);
                 String fareS = o.has("fare") ? money(o.optDouble("fare", 0)) : "—";
                 String hourlyS = o.has("hourly") ? money(o.optDouble("hourly", 0)) : "—";
@@ -441,7 +441,7 @@ public final class DetailsActivity extends BaseActivity {
                     went.setText("من این سفر رفتم");
                     went.setTextSize(13f);
                     went.setTextColor(Color.WHITE);
-                    went.setBackgroundColor(0xFF16A34A);
+                    styleSolid(went, 0xFF16A34A, 13);
                     went.setPadding(dp(12), dp(10), dp(12), dp(10));
                     final long fts = ts;
                     went.setOnClickListener(new View.OnClickListener() {
@@ -520,19 +520,104 @@ public final class DetailsActivity extends BaseActivity {
         c.setPadding(dp(14), dp(14), dp(14), dp(14));
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(Color.WHITE);
-        bg.setCornerRadius(dp(14));
+        bg.setCornerRadius(dp(20));
         bg.setStroke(dp(1), CARD_BORDER);
         c.setBackground(bg);
+        try { c.setElevation(dp(1)); } catch (Throwable ignored) {}
         return c;
     }
 
-    private TextView row(String k, String v) {
-        TextView t = new TextView(this);
-        t.setText(k + "\n" + v);
-        t.setTextSize(13f);
-        t.setTextColor(TEXT_DARK);
-        t.setPadding(0, dp(4), 0, dp(4));
-        return t;
+    private LinearLayout row(String k, String v) {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setPadding(0, dp(9), 0, dp(9));
+        TextView kt = new TextView(this);
+        kt.setText(k);
+        kt.setTextSize(12.5f);
+        kt.setTextColor(TEXT_MUTED);
+        LinearLayout.LayoutParams klp = new LinearLayout.LayoutParams(0, -2, 1f);
+        klp.setMarginEnd(dp(10));
+        r.addView(kt, klp);
+        TextView vt = new TextView(this);
+        vt.setText(v);
+        vt.setTextSize(13.5f);
+        vt.setTypeface(Typeface.DEFAULT_BOLD);
+        vt.setTextColor(TEXT_DARK);
+        vt.setGravity(Gravity.END);
+        r.addView(vt, new LinearLayout.LayoutParams(0, -2, 1.25f));
+        r.setBackground(new RowDivider());
+        return r;
+    }
+
+    /** خط جداکنندهٔ نازک پایین هر ردیف */
+    private final class RowDivider extends android.graphics.drawable.Drawable {
+        private final android.graphics.Paint p = new android.graphics.Paint();
+        RowDivider() { p.setColor(0xFFEEF2F7); }
+        @Override public void draw(android.graphics.Canvas c) {
+            android.graphics.Rect b = getBounds();
+            c.drawRect(b.left, b.bottom - Math.max(1, dp(1)), b.right, b.bottom, p);
+        }
+        @Override public void setAlpha(int a) {}
+        @Override public void setColorFilter(android.graphics.ColorFilter f) {}
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
+
+    private void styleSolid(Button b, int color, int textSizeSp) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(color);
+        g.setCornerRadius(dp(14));
+        b.setBackground(g);
+        b.setAllCaps(false);
+        b.setTextColor(Color.WHITE);
+        b.setTextSize(textSizeSp);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setGravity(Gravity.CENTER);
+    }
+
+    /** هدر: تصویر جاده + گرادیان آبی رایدو + بازگشت + عنوان */
+    private View buildHeader() {
+        android.widget.FrameLayout head = new android.widget.FrameLayout(this);
+        android.widget.ImageView road = new android.widget.ImageView(this);
+        road.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        try { road.setImageResource(R.drawable.bg_road); } catch (Throwable ignored) {}
+        head.addView(road, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        View shade = new View(this);
+        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x990F172A, 0xE61E3A8A}));
+        head.addView(shade, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        LinearLayout in = new LinearLayout(this);
+        in.setOrientation(LinearLayout.VERTICAL);
+        in.setPadding(dp(16), dp(14), dp(16), dp(14));
+        TextView back = new TextView(this);
+        back.setText("→");
+        back.setTextSize(20f);
+        back.setTextColor(Color.WHITE);
+        back.setGravity(Gravity.CENTER);
+        GradientDrawable bb = new GradientDrawable();
+        bb.setShape(GradientDrawable.OVAL);
+        bb.setColor(0x33FFFFFF);
+        bb.setStroke(dp(1), 0x55FFFFFF);
+        back.setBackground(bb);
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { finish(); }
+        });
+        in.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        TextView title = new TextView(this);
+        title.setText("جزئیات و تحلیل‌ها");
+        title.setTextSize(22f);
+        title.setTextColor(Color.WHITE);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setPadding(0, dp(12), 0, 0);
+        in.addView(title);
+        TextView sub = new TextView(this);
+        sub.setText("آخرین نتیجه و تاریخچهٔ تحلیل‌های ۷ روز اخیر");
+        sub.setTextSize(13f);
+        sub.setTextColor(0xE6FFFFFF);
+        sub.setPadding(0, dp(4), 0, 0);
+        in.addView(sub);
+        head.addView(in, new android.widget.FrameLayout.LayoutParams(-1, -2));
+        return head;
     }
 
     private String money(double v) {
