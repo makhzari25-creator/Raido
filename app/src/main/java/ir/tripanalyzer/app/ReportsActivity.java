@@ -47,37 +47,16 @@ public final class ReportsActivity extends BaseActivity {
         shell.setBackgroundColor(0xFFF1F5F9);
         shell.setLayoutParams(new LinearLayout.LayoutParams(-1, -1));
 
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(8), dp(14), dp(16), dp(14));
-        bar.setBackgroundColor(TEAL);
-        TextView back = new TextView(this);
-        back.setText("←");
-        back.setTextSize(22f);
-        back.setTextColor(Color.WHITE);
-        back.setPadding(dp(12), dp(4), dp(12), dp(4));
-        back.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { finish(); }
-        });
-        bar.addView(back);
-        TextView title = new TextView(this);
-        title.setText("آمار و گزارش‌ها");
-        title.setTextSize(18f);
-        title.setTextColor(Color.WHITE);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
-        title.setGravity(Gravity.CENTER);
-        try { Fonts.INSTANCE.apply(title, true); } catch (Exception ignored) {}
-        bar.addView(title);
-        View pad = new View(this);
-        pad.setLayoutParams(new LinearLayout.LayoutParams(dp(48), 1));
-        bar.addView(pad);
-        shell.addView(bar);
+        shell.addView(buildHeader(), new LinearLayout.LayoutParams(-1, dp(150)));
 
         LinearLayout tabs = new LinearLayout(this);
         tabs.setOrientation(LinearLayout.HORIZONTAL);
-        tabs.setPadding(dp(12), dp(12), dp(12), dp(4));
+        tabs.setPadding(dp(4), dp(4), dp(4), dp(4));
+        GradientDrawable tabsBg = new GradientDrawable();
+        tabsBg.setColor(Color.WHITE);
+        tabsBg.setCornerRadius(dp(18));
+        tabsBg.setStroke(dp(1), CARD_BORDER);
+        tabs.setBackground(tabsBg);
         tabWeek = tabButton("هفته");
         tabMonth = tabButton("ماه");
         tabHourly = tabButton("میانگین ساعتی");
@@ -100,13 +79,15 @@ public final class ReportsActivity extends BaseActivity {
         tabs.addView(tabMonth, tlp);
         tabs.addView(tabHourly, tlp);
         tabs.addView(tabReports, tlp);
-        shell.addView(tabs);
+        LinearLayout.LayoutParams tabsLp = new LinearLayout.LayoutParams(-1, -2);
+        tabsLp.setMargins(dp(14), dp(12), dp(14), dp(4));
+        shell.addView(tabs, tabsLp);
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         contentHost = new LinearLayout(this);
         contentHost.setOrientation(LinearLayout.VERTICAL);
-        contentHost.setPadding(dp(16), dp(12), dp(16), dp(32));
+        contentHost.setPadding(dp(14), dp(12), dp(14), dp(32));
         scroll.addView(contentHost);
         shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
 
@@ -121,9 +102,10 @@ public final class ReportsActivity extends BaseActivity {
     private TextView tabButton(String label) {
         TextView t = new TextView(this);
         t.setText(label);
-        t.setTextSize(14f);
+        t.setTextSize(13f);
         t.setGravity(Gravity.CENTER);
-        t.setPadding(dp(8), dp(12), dp(8), dp(12));
+        t.setPadding(dp(4), dp(11), dp(4), dp(11));
+        t.setSingleLine(true);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         return t;
     }
@@ -136,11 +118,16 @@ public final class ReportsActivity extends BaseActivity {
     }
 
     private void styleTab(TextView t, boolean on) {
-        GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(12));
-        g.setColor(on ? TAB_ON : TAB_OFF);
-        t.setBackground(g);
-        t.setTextColor(on ? Color.WHITE : TEXT_DARK);
+        if (on) {
+            GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{0xFF3B82F6, 0xFF2563EB});
+            g.setCornerRadius(dp(14));
+            t.setBackground(g);
+            t.setTextColor(Color.WHITE);
+        } else {
+            t.setBackground(null);
+            t.setTextColor(0xFF475569);
+        }
     }
 
     private void render() {
@@ -373,7 +360,7 @@ public final class ReportsActivity extends BaseActivity {
             row.addView(ChartKit.donut(this, st.green, st.yellow, st.red, 110));
             LinearLayout leg = new LinearLayout(this);
             leg.setOrientation(LinearLayout.VERTICAL);
-            leg.setPadding(dp(16), 0, 0, 0);
+            leg.setPaddingRelative(dp(16), 0, 0, 0);
             int total = Math.max(1, st.total);
             TextView lg = new TextView(this);
             lg.setText("سبز  " + st.green + "  (" + (st.green * 100 / total) + "٪)");
@@ -709,20 +696,82 @@ public final class ReportsActivity extends BaseActivity {
         return lp;
     }
     private LinearLayout.LayoutParams lpHalf() {
-        return new LinearLayout.LayoutParams(0, -2, 1f);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -2, 1f);
+        lp.setMargins(dp(4), 0, dp(4), 0);
+        return lp;
+    }
+
+    /** هدر: تصویر جاده + گرادیان آبی رایدو + بازگشت + عنوان */
+    private View buildHeader() {
+        android.widget.FrameLayout head = new android.widget.FrameLayout(this);
+        android.widget.ImageView road = new android.widget.ImageView(this);
+        road.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        try { road.setImageResource(R.drawable.bg_road); } catch (Throwable ignored) {}
+        head.addView(road, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        View shade = new View(this);
+        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x990F172A, 0xE61E3A8A}));
+        head.addView(shade, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        LinearLayout in = new LinearLayout(this);
+        in.setOrientation(LinearLayout.VERTICAL);
+        in.setPadding(dp(16), dp(14), dp(16), dp(14));
+        TextView back = new TextView(this);
+        back.setText("→");
+        back.setTextSize(20f);
+        back.setTextColor(Color.WHITE);
+        back.setGravity(Gravity.CENTER);
+        GradientDrawable bb = new GradientDrawable();
+        bb.setShape(GradientDrawable.OVAL);
+        bb.setColor(0x33FFFFFF);
+        bb.setStroke(dp(1), 0x55FFFFFF);
+        back.setBackground(bb);
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { finish(); }
+        });
+        in.addView(back, new LinearLayout.LayoutParams(dp(40), dp(40)));
+        TextView title = new TextView(this);
+        title.setText("آمار و گزارش‌ها");
+        title.setTextSize(22f);
+        title.setTextColor(Color.WHITE);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setPadding(0, dp(12), 0, 0);
+        in.addView(title);
+        TextView sub = new TextView(this);
+        sub.setText("نمای کلی عملکرد تو · فقط روی این گوشی");
+        sub.setTextSize(13f);
+        sub.setTextColor(0xE6FFFFFF);
+        sub.setPadding(0, dp(4), 0, 0);
+        in.addView(sub);
+        head.addView(in, new android.widget.FrameLayout.LayoutParams(-1, -2));
+        return head;
     }
     private TextView sectionTitle(String s) {
         TextView t = new TextView(this);
-        t.setText(s); t.setTextSize(15f); t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setText(s); t.setTextSize(15.5f); t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setTextColor(TEXT_DARK); t.setPadding(0, 0, 0, dp(12));
+        try {
+            GradientDrawable dot = new GradientDrawable();
+            dot.setShape(GradientDrawable.OVAL);
+            dot.setColor(0xFF2563EB);
+            dot.setSize(dp(9), dp(9));
+            dot.setBounds(0, 0, dp(9), dp(9));
+            t.setCompoundDrawablesRelative(dot, null, null, null);
+            t.setCompoundDrawablePadding(dp(8));
+        } catch (Throwable ignored) {}
         return t;
     }
     private LinearLayout statCell(String num, String label, int color) {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL); c.setGravity(Gravity.CENTER);
-        c.setPadding(dp(8), dp(8), dp(8), dp(8));
+        c.setPadding(dp(8), dp(12), dp(8), dp(12));
+        int fill = color == GREEN ? 0xFFECFDF5 : color == AMBER ? 0xFFFFFBEB : color == RED ? 0xFFFEF2F2 : 0xFFEFF6FF;
+        int edge = color == GREEN ? 0xFFBBF7D0 : color == AMBER ? 0xFFFDE68A : color == RED ? 0xFFFECACA : 0xFFBFDBFE;
+        GradientDrawable tg = new GradientDrawable();
+        tg.setColor(fill); tg.setCornerRadius(dp(16)); tg.setStroke(dp(1), edge);
+        c.setBackground(tg);
         TextView n = new TextView(this); n.setText(num); n.setTextSize(28f);
-        n.setTypeface(Typeface.DEFAULT_BOLD); n.setTextColor(color); n.setGravity(Gravity.CENTER);
+        n.setTypeface(Typeface.DEFAULT_BOLD);
+        n.setTextColor(color == TEXT_DARK ? 0xFF1D4ED8 : color); n.setGravity(Gravity.CENTER);
         TextView l = new TextView(this); l.setText(label); l.setTextSize(13f);
         l.setTextColor(TEXT_MUTED); l.setGravity(Gravity.CENTER);
         c.addView(n); c.addView(l); return c;
@@ -731,8 +780,9 @@ public final class ReportsActivity extends BaseActivity {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
         GradientDrawable g = new GradientDrawable();
-        g.setColor(Color.WHITE); g.setCornerRadius(dp(14)); g.setStroke(dp(1), CARD_BORDER);
+        g.setColor(Color.WHITE); g.setCornerRadius(dp(20)); g.setStroke(dp(1), CARD_BORDER);
         c.setBackground(g); c.setLayoutParams(new LinearLayout.LayoutParams(-1, -2));
+        try { c.setElevation(dp(1)); } catch (Throwable ignored) {}
         return c;
     }
     private void space(LinearLayout p, int d) {
