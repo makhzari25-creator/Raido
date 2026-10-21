@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="ic_launcher_bg">#ff070B10</color>
+    <color name="splash_bg">#ff070B10</color>
     <color name="brand">#ff2563EB</color>
     <color name="ic_launcher_background">#ff2563EB</color>
     <color name="verdictGray">#ff64748B</color>

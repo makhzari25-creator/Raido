@@ -317,7 +317,7 @@ public final class MainActivity extends BaseActivity {
         if (photo != null) {
             avatar.setImageBitmap(photo);
         } else {
-            try { avatar.setImageResource(R.mipmap.ic_launcher); } catch (Exception e) {}
+            try { avatar.setImageResource(R.drawable.logo_square); } catch (Exception e) {}
         }
         profile.addView(avatar);
 

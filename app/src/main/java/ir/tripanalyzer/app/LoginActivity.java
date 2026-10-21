@@ -171,14 +171,8 @@ public final class LoginActivity extends BaseActivity {
         titleRow.setGravity(Gravity.CENTER_VERTICAL);
         titleRow.setPadding(0, dp(12), 0, 0);
         android.widget.ImageView tIc = new android.widget.ImageView(this);
-        tIc.setImageResource(R.drawable.ic_lg_send);
-        tIc.setColorFilter(0xFF2563EB);
-        tIc.setPadding(dp(10), dp(10), dp(10), dp(10));
-        GradientDrawable tc = new GradientDrawable();
-        tc.setShape(GradientDrawable.OVAL);
-        tc.setColor(0xFFFFFFFF);
-        tIc.setBackground(tc);
-        titleRow.addView(tIc, new LinearLayout.LayoutParams(dp(42), dp(42)));
+        tIc.setImageResource(R.drawable.logo_square);
+        titleRow.addView(tIc, new LinearLayout.LayoutParams(dp(46), dp(46)));
         TextView h1 = tv("ورود به رایدو", 24f, Color.WHITE, true);
         h1.setPaddingRelative(dp(12), 0, 0, 0);
         titleRow.addView(h1);
