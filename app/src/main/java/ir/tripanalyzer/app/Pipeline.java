@@ -48,6 +48,7 @@ public final class Pipeline {
                 TripConfirmHelper.INSTANCE.cancelPending(applicationContext);
             } catch (Throwable ignored) {
             }
+            if (ScreenHints.isActiveTripScreen(rawText)) return;
             if (ParseLayer.INSTANCE.looksLikeTripRequest(rawText)) {
                 new Thread(new Bg(applicationContext, rawText, source)).start();
             }
@@ -86,6 +87,7 @@ public final class Pipeline {
         Context applicationContext = context.getApplicationContext();
         Store store = Store.INSTANCE;
         Intrinsics.checkNotNull(applicationContext);
+        if (ScreenHints.isActiveTripScreen(rawText)) return;
         if (store.isAnalysisEnabled(applicationContext) && LicenseStore.INSTANCE.canUseAnalysis(applicationContext) && ParseLayer.INSTANCE.looksLikeTripRequest(rawText)) {
             SnappLegParser.TripShape shape = ParseLayer.INSTANCE.analyzeShape(rawText);
             SnappLegParser.Legs legs = shape.legs;

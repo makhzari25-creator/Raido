@@ -24,6 +24,18 @@ public final class ScreenHints {
         return hasDetailsWord && hasAccept;
     }
 
+    /**
+     * صفحهٔ «سفر قبول‌شده / در حال سفر» (دکمهٔ پایان سفر) — درخواست جدید نیست و نباید تحلیل شود.
+     * اگر هم‌زمان نشانهٔ درخواست جدید باشد (قبول، دقیقه تا مبدأ، سفر-در-سفر) تحلیل ادامه دارد.
+     */
+    public static boolean isActiveTripScreen(String raw) {
+        if (raw == null) return false;
+        String t = raw.replace('\u200c', ' ');
+        if (!t.contains("پایان سفر")) return false;
+        if (t.contains("قبول") || t.contains("دقیقه تا مبد") || t.contains("از مقصد سفر فعلی")) return false;
+        return true;
+    }
+
     public static boolean hasRealKm(NotificationParser.Parsed p) {
         if (p == null) return false;
         Double a = p.getPickupKm();
