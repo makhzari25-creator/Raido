@@ -149,8 +149,7 @@ public final class RaidoDataStore {
                 long last = Math.max(o.optLong("seen", 0L), o.optLong("ts", 0L));
                 if (last <= 0 || now - last >= windowMs) continue;
                 String od = RecentRequests.norm(o.optString("dest", ""));
-                if (destNorm != null && !destNorm.isEmpty() && !od.isEmpty()
-                        && !destNorm.contains(od) && !od.contains(destNorm)) continue;
+                if (destClearlyDiffers(destNorm, od)) continue;
                 boolean oldKm = o.has("pickupKm") || o.has("tripKm");
                 if (pickupKm != null && tripKm != null && o.has("pickupKm") && o.has("tripKm")) {
                     double a = o.optDouble("pickupKm") + o.optDouble("tripKm");
@@ -164,6 +163,21 @@ public final class RaidoDataStore {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    /** مقصد فقط وقتی «کاملاً متفاوت» است که هر دو بلند باشند و هیچ تکهٔ ۵ حرفی مشترک نداشته باشند (آدرس صفحهٔ جزئیات بلندتر/کوتاه‌شده است). */
+    private static boolean destClearlyDiffers(String a, String b) {
+        if (a == null || b == null) return false;
+        a = a.replace("…", "").replace("...", "").trim();
+        b = b.replace("…", "").replace("...", "").trim();
+        if (a.length() < 12 || b.length() < 12) return false;
+        if (a.contains(b) || b.contains(a)) return false;
+        String sh = a.length() <= b.length() ? a : b;
+        String lg = a.length() <= b.length() ? b : a;
+        for (int i = 0; i + 5 <= sh.length(); i++) {
+            if (lg.contains(sh.substring(i, i + 5))) return false;
+        }
+        return true;
     }
 
     /** تازه‌کردن «آخرین دیده‌شدن» ردیف (پنجرهٔ لغزان) بدون تغییر دیگر */

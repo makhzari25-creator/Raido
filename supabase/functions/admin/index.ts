@@ -103,9 +103,30 @@ Deno.serve(async (req) => {
   if (action === "set_setting") {
     const key = String(body.key ?? "");
     let value = String(body.value ?? "").trim();
-    if (key !== "tutorial_url") return json({ error: "bad_request" }, 400);
-    if (value && !/^https:\/\/[^\s]{4,500}$/.test(value)) return json({ error: "bad_url" }, 400);
-    value = value.slice(0, 500);
+    const https = /^https:\/\/[^\s]{4,500}$/;
+    const str = (x: unknown, max: number) => typeof x === "string" && x.length <= max;
+    if (key === "tutorial_url") {
+      if (value && !https.test(value)) return json({ error: "bad_url" }, 400);
+    } else if (key === "support_links") {
+      let a: unknown; try { a = JSON.parse(value); } catch { return json({ error: "bad_json" }, 400); }
+      if (!Array.isArray(a) || a.length > 10) return json({ error: "bad_links" }, 400);
+      for (const l of a as Record<string, unknown>[]) {
+        if (!l || !str(l.title, 60) || !(l.title as string).trim() || !str(l.url, 500) || !https.test(l.url as string) || (l.desc != null && !str(l.desc, 200))) return json({ error: "bad_link_item" }, 400);
+      }
+    } else if (key === "guide") {
+      let a: unknown; try { a = JSON.parse(value); } catch { return json({ error: "bad_json" }, 400); }
+      if (!Array.isArray(a) || a.length > 40) return json({ error: "bad_guide" }, 400);
+      for (const g of a as Record<string, unknown>[]) {
+        if (!g || !str(g.title, 120) || !(g.title as string).trim() || !str(g.body, 6000)) return json({ error: "bad_guide_item" }, 400);
+      }
+    } else if (key === "plans") {
+      let a: unknown; try { a = JSON.parse(value); } catch { return json({ error: "bad_json" }, 400); }
+      if (!Array.isArray(a) || a.length > 10) return json({ error: "bad_plans" }, 400);
+      for (const p of a as Record<string, unknown>[]) {
+        if (!p || !PLANS[String(p.code)] || typeof p.price !== "number" || !isFinite(p.price) || p.price < 0 || p.price > 1_000_000_000 || !str(p.title, 60) || !str(p.desc ?? "", 200)) return json({ error: "bad_plan_item" }, 400);
+      }
+    } else return json({ error: "bad_request" }, 400);
+    value = value.slice(0, 60000);
     const { error } = await db.from("app_settings").upsert({ key, value, updated_at: new Date().toISOString() });
     if (error) return json({ error: "server" }, 500);
     return json({ ok: true });

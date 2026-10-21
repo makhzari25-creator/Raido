@@ -319,8 +319,10 @@ public final class PermissionsOnboardingActivity extends BaseActivity {
         return card;
     }
 
-    /** لینک ویدیو از سرور (قابل تغییر از پنل) گرفته می‌شود؛ بدون نیاز به آپدیت اپ. */
+    /** لینک ویدیو از سرور (قابل تغییر از پنل)؛ اول کش، اگر خالی بود یک‌بار از سرور می‌گیرد. */
     private void openTutorial(final Button b) {
+        String cached = RemoteConfig.tutorialUrl(this);
+        if (cached.startsWith("https://")) { launchTutorial(cached); RemoteConfig.refresh(this, 60000L, null); return; }
         b.setEnabled(false);
         new Thread(() -> {
             String url = "";
@@ -331,17 +333,18 @@ public final class PermissionsOnboardingActivity extends BaseActivity {
             final String u = url;
             runOnUiThread(() -> {
                 b.setEnabled(true);
-                if (u.startsWith("https://")) {
-                    try {
-                        startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u)));
-                    } catch (Throwable e) {
-                        android.widget.Toast.makeText(this, "لینک باز نشد", android.widget.Toast.LENGTH_LONG).show();
-                    }
-                } else {
-                    android.widget.Toast.makeText(this, "ویدیوی آموزشی هنوز آماده نیست یا اینترنت قطع است", android.widget.Toast.LENGTH_LONG).show();
-                }
+                if (u.startsWith("https://")) launchTutorial(u);
+                else android.widget.Toast.makeText(this, "ویدیوی آموزشی هنوز آماده نیست یا اینترنت قطع است", android.widget.Toast.LENGTH_LONG).show();
             });
         }, "raido-tut").start();
+    }
+
+    private void launchTutorial(String u) {
+        try {
+            startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u)));
+        } catch (Throwable e) {
+            android.widget.Toast.makeText(this, "لینک باز نشد", android.widget.Toast.LENGTH_LONG).show();
+        }
     }
 
     private View statusRow(String name, boolean on) {

@@ -15,7 +15,7 @@ final class CloudSync {
     private CloudSync() {}
 
     static void syncIfDue(Context ctx) {
-        try { DepLookup.INSTANCE.syncIfDue(ctx); } catch (Throwable ignored) {}
+        try { RemoteConfig.syncIfDue(ctx); } catch (Throwable ignored) {}
         try {
             long el = SystemClock.elapsedRealtime();
             if (lastCheckElapsed != 0 && el - lastCheckElapsed < 10 * 60 * 1000L) return;

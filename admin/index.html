@@ -45,7 +45,7 @@
   </section>
 
   <div id="app" hidden>
-    <div class="row" id="tabs" style="margin-bottom:12px"><button id="tMain">مدیریت</button><button class="ghost" id="tDep">جدول استهلاک</button></div>
+    <div id="tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"></div>
     <section data-tab="main" class="card">
       <h2>آمار <button class="ghost" id="refresh" style="float:left;padding:4px 12px;font-size:13px">بروزرسانی</button></h2>
       <div class="grid" id="stats"></div>
@@ -117,6 +117,30 @@
       <div class="msg" id="tutMsg"></div>
     </section>
 
+    <section data-tab="guide" class="card">
+      <h2>راهنمای استفاده (درباره و پشتیبانی ← راهنما)</h2>
+      <p class="hint">هر بخش یک کارت در اپ است. ترتیب با ▲ ▼ عوض می‌شود. بعد از «ذخیره»، اپ‌ها در باز شدن صفحه یا همگام‌سازی بعدی به‌روز می‌شوند.</p>
+      <div id="guideList"></div>
+      <div class="row" style="margin-top:12px"><button class="ghost" id="guideAdd">+ بخش جدید</button><button id="guideSave">ذخیره راهنما</button></div>
+      <div class="msg" id="guideMsg"></div>
+    </section>
+
+    <section data-tab="support" class="card">
+      <h2>لینک‌های پشتیبانی</h2>
+      <p class="hint">چند لینک اضافه کن (تلگرام، واتس‌اپ، سایت…). لینک باید با https:// شروع شود. اولین لینک برای دکمهٔ درخواست اشتراک هم استفاده می‌شود.</p>
+      <div id="supList"></div>
+      <div class="row" style="margin-top:12px"><button class="ghost" id="supAdd">+ لینک جدید</button><button id="supSave">ذخیره لینک‌ها</button></div>
+      <div class="msg" id="supMsg"></div>
+    </section>
+
+    <section data-tab="plans" class="card">
+      <h2>اشتراک و قیمت‌ها</h2>
+      <p class="hint">قیمت به تومان. مدت هر طرح و پرمیوم بودن آن سمت سرور ثابت است و اینجا فقط نام، قیمت و توضیح نمایشی عوض می‌شود.</p>
+      <div id="planList"></div>
+      <div class="row" style="margin-top:12px"><button id="planSave">ذخیره قیمت‌ها</button></div>
+      <div class="msg" id="planMsg"></div>
+    </section>
+
     <section data-tab="main" class="card">
       <h2>کاربران</h2>
       <div class="row"><input id="q" dir="ltr" placeholder="جستجوی شماره یا ایمیل…"><button class="ghost" id="search" style="flex:0 0 auto">جستجو</button></div>
@@ -158,12 +182,77 @@ async function loadUsers() {
     return `<tr><td dir="ltr">${u.phone || "—"}${u.phone_verified === false ? " <small class=err>تأییدنشده</small>" : ""}${u.email ? "<br><small dir=ltr>" + u.email + "</small>" : ""}</td><td>${via}</td><td><span class="tag ${sub && sub.is_premium ? "p" : ""}">${PLAN_FA[sub ? sub.plan : "NONE"] || "—"}</span></td><td>${active ? dt(sub.expires_at) : "<span class=err>منقضی/ندارد</span>"}</td><td>${dt(u.last_seen)}</td><td>${u.banned ? "<span class=err>مسدود</span>" : "—"}</td></tr>`;
   }).join("") || `<tr><td colspan="6">کاربری یافت نشد</td></tr>`;
 }
+const TABS = [["main", "مدیریت"], ["dep", "جدول استهلاک"], ["guide", "راهنمای استفاده"], ["support", "پشتیبانی"], ["plans", "اشتراک و قیمت"]];
 function showTab(t) {
   document.querySelectorAll("[data-tab]").forEach((e) => { e.hidden = e.dataset.tab !== t; });
-  $("tMain").className = t === "main" ? "" : "ghost"; $("tDep").className = t === "dep" ? "" : "ghost";
+  document.querySelectorAll("#tabs button").forEach((b) => { b.className = b.dataset.t === t ? "" : "ghost"; });
 }
-$("tMain").onclick = () => showTab("main"); $("tDep").onclick = () => showTab("dep");
+$("tabs").innerHTML = TABS.map(([k, l]) => `<button data-t="${k}" style="flex:0 0 auto">${l}</button>`).join("");
+document.querySelectorAll("#tabs button").forEach((b) => { b.onclick = () => showTab(b.dataset.t); });
 showTab("main");
+
+/* ویرایشگر لیستی: fields=[{k,label,type:'text'|'area'|'number'}] */
+function listEditor(host, fields, items, opts) {
+  opts = opts || {};
+  const rows = [];
+  const root = $(host);
+  function draw() {
+    root.innerHTML = "";
+    rows.forEach((it, i) => {
+      const box = document.createElement("div");
+      box.style.cssText = "border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px";
+      let h = "";
+      if (opts.fixedLabel) h += `<b>${opts.fixedLabel(it)}</b>`;
+      fields.forEach((f) => {
+        h += `<label>${f.label}</label>` + (f.type === "area"
+          ? `<textarea data-k="${f.k}" rows="${f.rows || 5}" style="width:100%"></textarea>`
+          : `<input data-k="${f.k}" ${f.type === "number" ? 'type="number" dir="ltr"' : (f.ltr ? 'dir="ltr"' : "")}>`);
+      });
+      if (!opts.fixed) h += `<div class="row" style="margin-top:8px"><button class="ghost" data-a="up">▲</button><button class="ghost" data-a="down">▼</button><button class="ghost" data-a="del" style="color:var(--bad)">حذف</button></div>`;
+      box.innerHTML = h;
+      fields.forEach((f) => { box.querySelector(`[data-k="${f.k}"]`).value = it[f.k] == null ? "" : it[f.k]; });
+      box.querySelectorAll("[data-k]").forEach((el) => { el.oninput = () => { it[el.dataset.k] = f2(el, fields); }; });
+      box.querySelectorAll("[data-a]").forEach((b) => {
+        b.onclick = () => {
+          if (b.dataset.a === "del") { if (!confirm("حذف شود؟")) return; rows.splice(i, 1); }
+          else if (b.dataset.a === "up" && i > 0) { [rows[i - 1], rows[i]] = [rows[i], rows[i - 1]]; }
+          else if (b.dataset.a === "down" && i < rows.length - 1) { [rows[i + 1], rows[i]] = [rows[i], rows[i + 1]]; }
+          draw();
+        };
+      });
+      root.appendChild(box);
+    });
+  }
+  function f2(el, fs) { const f = fs.find((x) => x.k === el.dataset.k); return f && f.type === "number" ? Number(el.value) : el.value; }
+  (items || []).forEach((x) => rows.push(Object.assign({}, x)));
+  draw();
+  return { add(it) { rows.push(it); draw(); }, get() { return rows.map((r) => Object.assign({}, r)); } };
+}
+let edGuide, edSup, edPlans;
+async function loadCfg() {
+  let st = {};
+  try { st = (await call({ action: "get_settings" })).settings || {}; } catch (e) {}
+  const pj = (k) => { try { return JSON.parse(st[k] || "[]"); } catch (e) { return []; } };
+  edGuide = listEditor("guideList", [{ k: "title", label: "عنوان بخش" }, { k: "body", label: "متن (هر خط جدید = خط جدید در اپ)", type: "area", rows: 6 }], pj("guide"));
+  edSup = listEditor("supList", [{ k: "title", label: "عنوان (مثلاً تلگرام پشتیبانی)" }, { k: "url", label: "لینک https://", ltr: true }, { k: "desc", label: "توضیح کوتاه (اختیاری)" }], pj("support_links"));
+  const planNames = { MONTHLY: "ماهانه عادی · ۳۰ روز", YEARLY: "سالانه عادی · ۳۶۵ روز", PREMIUM_MONTHLY: "پرمیوم ماهانه · ۳۰ روز", PREMIUM_YEARLY: "پرمیوم سالانه · ۳۶۵ روز" };
+  let pl = pj("plans");
+  Object.keys(planNames).forEach((c) => { if (!pl.find((p) => p.code === c)) pl.push({ code: c, title: planNames[c], price: 0, desc: "" }); });
+  pl = Object.keys(planNames).map((c) => pl.find((p) => p.code === c));
+  edPlans = listEditor("planList", [{ k: "title", label: "نام نمایشی" }, { k: "price", label: "قیمت (تومان)", type: "number" }, { k: "desc", label: "توضیح" }], pl, { fixed: true, fixedLabel: (it) => planNames[it.code] });
+}
+async function saveCfg(key, value, msgId) {
+  const m = $(msgId);
+  try {
+    await call({ action: "set_setting", key, value: JSON.stringify(value) });
+    m.className = "msg ok"; m.textContent = "ذخیره شد؛ اپ‌ها در باز شدن بعدی یا همگام‌سازی بعدی به‌روز می‌شوند.";
+  } catch (e) { m.className = "msg err"; m.textContent = "رد شد: " + e.message; }
+}
+$("guideAdd").onclick = () => edGuide && edGuide.add({ title: "", body: "" });
+$("supAdd").onclick = () => edSup && edSup.add({ title: "", url: "https://", desc: "" });
+$("guideSave").onclick = () => saveCfg("guide", edGuide.get(), "guideMsg");
+$("supSave").onclick = () => saveCfg("support_links", edSup.get(), "supMsg");
+$("planSave").onclick = () => saveCfg("plans", edPlans.get().map((p) => ({ code: p.code, title: p.title, price: Math.round(Number(p.price) || 0), desc: p.desc || "" })), "planMsg");
 async function loadDep() {
   try {
     const r = await call({ action: "get_dep" });
@@ -198,7 +287,7 @@ $("tutSave").onclick = async () => {
 };
 async function enter() {
   $("loginCard").hidden = true; $("app").hidden = false;
-  await Promise.all([loadStats(), loadUsers(), loadTut(), loadDep()]);
+  await Promise.all([loadStats(), loadUsers(), loadTut(), loadDep(), loadCfg()]);
 }
 $("loginBtn").onclick = async () => {
   KEY = $("key").value.trim(); $("loginMsg").textContent = "";

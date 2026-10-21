@@ -29,135 +29,121 @@ public final class SubscriptionActivity extends BaseActivity {
         buildUi();
     }
 
+    private LinearLayout list;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (list != null) render();
+    }
+
     private void buildUi() {
+        LinearLayout shell = new LinearLayout(this);
+        shell.setOrientation(LinearLayout.VERTICAL);
+        shell.setBackgroundColor(PageKit.BG);
+        shell.addView(PageKit.header(this, "اشتراک RAIDO", "حسابداری هوشمند رانندگان"), new LinearLayout.LayoutParams(-1, -2));
         ScrollView scroll = new ScrollView(this);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(24), dp(32), dp(24), dp(32));
-        root.setBackgroundColor(Color.parseColor("#F8FAFC"));
+        list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(dp(16), dp(16), dp(16), dp(28));
+        scroll.addView(list);
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        setContentView(shell);
+        render();
+        RemoteConfig.refresh(this, 30000L, this::render);
+    }
 
-        TextView title = new TextView(this);
-        title.setText("اشتراک RAIDO");
-        title.setTextSize(24f);
-        title.setTypeface(null, Typeface.BOLD);
-        title.setTextColor(Color.parseColor("#0F172A"));
-        root.addView(title);
+    private void render() {
+        LinearLayout root = list;
+        root.removeAllViews();
 
-        TextView subtitle = new TextView(this);
-        subtitle.setText("حسابداری هوشمند رانندگان");
-        subtitle.setTextSize(14f);
-        subtitle.setTextColor(Color.parseColor("#64748B"));
-        subtitle.setPadding(0, dp(4), 0, dp(24));
-        root.addView(subtitle);
-
-        LinearLayout statusCard = card();
+        LinearLayout statusCard = PageKit.card(this);
+        boolean active = LicenseStore.INSTANCE.isAccessActive(this);
+        int stColor = active ? 0xFF16A34A : 0xFFDC2626;
         TextView statusTitle = new TextView(this);
         statusTitle.setText("وضعیت فعلی");
         statusTitle.setTextSize(13f);
-        statusTitle.setTextColor(Color.parseColor("#64748B"));
+        statusTitle.setTextColor(PageKit.MUTED);
         statusCard.addView(statusTitle);
-
-        boolean active = LicenseStore.INSTANCE.isAccessActive(this);
         TextView statusLabel = new TextView(this);
         statusLabel.setText(LicenseStore.INSTANCE.getStatusLabel(this));
-        statusLabel.setTextSize(16f);
+        statusLabel.setTextSize(17f);
         statusLabel.setTypeface(null, Typeface.BOLD);
-        statusLabel.setTextColor(active ? Color.parseColor("#16A34A") : Color.parseColor("#DC2626"));
+        statusLabel.setTextColor(stColor);
         statusLabel.setPadding(0, dp(6), 0, 0);
         statusCard.addView(statusLabel);
-
         TextView check = new TextView(this);
         check.setText(active ? "✓ دسترسی فعال" : "✗ نیاز به کد فعال‌سازی");
         check.setTextSize(14f);
-        check.setTextColor(active ? Color.parseColor("#16A34A") : Color.parseColor("#DC2626"));
+        check.setTextColor(stColor);
         check.setPadding(0, dp(4), 0, 0);
         statusCard.addView(check);
-        root.addView(statusCard);
-        addSpace(root, 20);
+        root.addView(statusCard, PageKit.gap(this, 0));
 
-        TextView plansTitle = new TextView(this);
-        plansTitle.setText("طرح‌ها و قیمت");
-        plansTitle.setTextSize(16f);
-        plansTitle.setTypeface(null, Typeface.BOLD);
-        plansTitle.setTextColor(Color.parseColor("#0F172A"));
+        TextView plansTitle = PageKit.sectionTitle(this, "طرح‌ها و قیمت");
+        plansTitle.setPadding(0, dp(20), 0, dp(10));
         root.addView(plansTitle);
-        addSpace(root, 12);
 
-        root.addView(planCard(
-                "تست ۷ روزه",
-                "رایگان با کد پشتیبانی",
+        root.addView(planCard("تست ۷ روزه", "رایگان با کد پشتیبانی",
                 "آشنایی با تحلیل عادی · بدون لایهٔ نشان",
-                "سلام، کد تست ۷ روزه رایدو می‌خوام"
-        ));
-        addSpace(root, 12);
-        root.addView(planCard(
-                "ماهانه عادی",
-                formatPrice(LicenseStore.PRICE_MONTHLY) + " تومان",
-                "تحلیل کامل درخواست‌ها · ۳۰ روز",
-                "سلام، اشتراک ماهانه عادی رایدو می‌خوام"
-        ));
-        addSpace(root, 12);
-        root.addView(planCard(
-                "سالانه عادی",
-                formatPrice(LicenseStore.PRICE_YEARLY) + " تومان",
-                "تحلیل کامل · ۳۶۵ روز",
-                "سلام، اشتراک سالانه عادی رایدو می‌خوام"
-        ));
-        addSpace(root, 12);
-        root.addView(planCard(
-                "پرمیوم ماهانه",
-                formatPrice(LicenseStore.PRICE_PREMIUM_MONTHLY) + " تومان",
-                "نشان + محدوده شهری + برگشت خالی (Hشیفت) · ۳۰ روز",
-                "سلام، اشتراک پرمیوم ماهانه رایدو می‌خوام"
-        ));
-        addSpace(root, 8);
-        root.addView(premiumDiffChip());
-        addSpace(root, 12);
-        root.addView(planCard(
-                "پرمیوم سالانه",
-                formatPrice(LicenseStore.PRICE_PREMIUM_YEARLY) + " تومان",
-                "نشان + محدوده شهری + برگشت خالی · ۳۶۵ روز",
-                "سلام، اشتراک پرمیوم سالانه رایدو می‌خوام"
-        ));
-        addSpace(root, 8);
-        root.addView(premiumDiffChip());
+                "سلام، کد تست ۷ روزه رایدو می‌خوام"), PageKit.gap(this, 0));
+        addPlan(root, "MONTHLY", "ماهانه عادی", LicenseStore.PRICE_MONTHLY,
+                "تحلیل کامل درخواست‌ها · ۳۰ روز", false);
+        addPlan(root, "YEARLY", "سالانه عادی", LicenseStore.PRICE_YEARLY,
+                "تحلیل کامل · ۳۶۵ روز", false);
+        addPlan(root, "PREMIUM_MONTHLY", "پرمیوم ماهانه", LicenseStore.PRICE_PREMIUM_MONTHLY,
+                "نشان + محدوده شهری + برگشت خالی (Hشیفت) · ۳۰ روز", true);
+        addPlan(root, "PREMIUM_YEARLY", "پرمیوم سالانه", LicenseStore.PRICE_PREMIUM_YEARLY,
+                "نشان + محدوده شهری + برگشت خالی · ۳۶۵ روز", true);
 
-        addSpace(root, 24);
         TextView note = new TextView(this);
-        note.setText("پرداخت و صدور کد فقط از طریق پشتیبانی تلگرام انجام می‌شود.\n"
-                + LicenseStore.TELEGRAM_ID);
+        note.setText("پرداخت و صدور کد فقط از طریق پشتیبانی انجام می‌شود.");
         note.setTextSize(13f);
-        note.setTextColor(Color.parseColor("#64748B"));
+        note.setTextColor(PageKit.MUTED);
         note.setGravity(Gravity.CENTER);
+        note.setPadding(0, dp(22), 0, 0);
         root.addView(note);
 
-        addSpace(root, 16);
-        TextView actLink = new TextView(this);
-        actLink.setText("ورود کد فعال‌سازی");
-        actLink.setTextSize(15f);
-        actLink.setTypeface(null, Typeface.BOLD);
-        actLink.setTextColor(Color.parseColor("#2563EB"));
-        actLink.setGravity(Gravity.CENTER);
+        TextView sup = PageKit.button(this, "ارتباط با پشتیبانی", PageKit.BLUE);
+        sup.setOnClickListener(v -> openTelegram(null));
+        root.addView(sup, PageKit.gap(this, 10));
+
+        TextView actLink = PageKit.button(this, "ورود کد فعال‌سازی", PageKit.TEAL);
         actLink.setOnClickListener(v -> {
             Intent ai = new Intent(this, ActivationActivity.class);
             ai.putExtra(ActivationActivity.EXTRA_RENEW, true);
             startActivity(ai);
         });
-        root.addView(actLink);
+        root.addView(actLink, PageKit.gap(this, 10));
 
-        addSpace(root, 28);
-        TextView outLink = new TextView(this);
-        outLink.setText("خروج از حساب");
-        outLink.setTextSize(14f);
-        outLink.setTextColor(Color.parseColor("#DC2626"));
-        outLink.setGravity(Gravity.CENTER);
-        outLink.setPadding(0, dp(10), 0, dp(10));
-        outLink.setOnClickListener(v -> confirmLogout());
-        if (LicenseStore.INSTANCE.isLoggedIn(this)) root.addView(outLink);
-
-        scroll.addView(root);
-        setContentView(scroll);
+        if (LicenseStore.INSTANCE.isLoggedIn(this)) {
+            TextView outLink = new TextView(this);
+            outLink.setText("خروج از حساب");
+            outLink.setTextSize(14f);
+            outLink.setTextColor(Color.parseColor("#DC2626"));
+            outLink.setGravity(Gravity.CENTER);
+            outLink.setPadding(0, dp(18), 0, dp(10));
+            outLink.setOnClickListener(v -> confirmLogout());
+            root.addView(outLink);
+        }
         try { Fonts.INSTANCE.applyRecursive(root); } catch (Exception ignored) {}
+    }
+
+    /** قیمت و توضیح از سرور (پنل ← اشتراک و قیمت)؛ اگر نبود مقدار پیش‌فرض داخل اپ */
+    private void addPlan(LinearLayout root, String code, String title, int price, String desc, boolean premium) {
+        RemoteConfig.Plan p = RemoteConfig.plan(this, code);
+        if (p != null) {
+            if (!p.title.isEmpty()) title = p.title;
+            if (!p.desc.isEmpty()) desc = p.desc;
+            price = p.price;
+        }
+        String tgName = title;
+        root.addView(planCard(title, formatPrice(price) + " تومان", desc,
+                "سلام، اشتراک " + tgName + " رایدو می‌خوام"), PageKit.gap(this, 12));
+        if (premium) {
+            LinearLayout.LayoutParams lp = PageKit.gap(this, 8);
+            root.addView(premiumDiffChip(), lp);
+        }
     }
 
     private void confirmLogout() {
@@ -178,7 +164,7 @@ public final class SubscriptionActivity extends BaseActivity {
     }
 
     private LinearLayout planCard(String title, String price, String desc, final String tgMessage) {
-        LinearLayout card = card();
+        LinearLayout card = PageKit.card(this);
         TextView t = new TextView(this);
         t.setText(title);
         t.setTextSize(16f);
@@ -322,9 +308,9 @@ public final class SubscriptionActivity extends BaseActivity {
 
     private void openTelegram(String message) {
         try {
-            String url = LicenseStore.TELEGRAM_SUPPORT;
-            if (message != null && message.length() > 0) {
-                url = "https://t.me/TripAnalyzerSupport?text=" + Uri.encode(message);
+            String url = RemoteConfig.primarySupportUrl(this);
+            if (message != null && message.length() > 0 && url.startsWith("https://t.me/")) {
+                url = url + (url.contains("?") ? "&" : "?") + "text=" + Uri.encode(message);
             }
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
         } catch (Throwable e) {

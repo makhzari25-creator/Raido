@@ -58,35 +58,23 @@ public final class DepLookup {
         return loadAsset(context);
     }
 
-    /**
-     * به‌روزرسانی جدول از سرور (حداکثر هر ۶ ساعت، روی ترد جدا، یک درخواست کوچک).
-     * اگر کاربر مقدار استهلاک را دستی تغییر نداده باشد، مقدارش با جدول جدید به‌روز می‌شود.
-     */
-    public void syncIfDue(final Context ctx) {
+    static String currentVersion(Context c) {
+        return c.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("version", "");
+    }
+
+    /** پاسخ app-config: اگر جدول جدید بود نصب می‌شود (در ترد پس‌زمینهٔ RemoteConfig صدا می‌شود). */
+    void onRemote(Context app, String ver, String tbl) {
         try {
-            final Context app = ctx.getApplicationContext();
-            long el = android.os.SystemClock.elapsedRealtime();
-            if (lastSyncElapsed != 0 && el - lastSyncElapsed < 30 * 60 * 1000L) return;
-            lastSyncElapsed = el;
-            final android.content.SharedPreferences sp = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            long wall = System.currentTimeMillis();
-            long last = sp.getLong("checked_at", 0L);
-            if (last <= wall && wall - last < 6 * 3600 * 1000L) return;
-            new Thread(() -> {
-                try {
-                    JSONObject r = RaidoCloud.post("app-config",
-                            new JSONObject().put("dep_version", sp.getString("version", "")), null, 6000, 10000);
-                    if (r.optInt("_http") != 200) return;
-                    sp.edit().putLong("checked_at", System.currentTimeMillis()).apply();
-                    String tbl = r.optString("dep_table", "");
-                    String ver = r.optString("dep_version", "");
-                    if (tbl.isEmpty() || ver.isEmpty()) return;
-                    JSONObject nu = new JSONObject(tbl);
-                    if (!valid(nu)) return;
-                    applyNew(app, nu, tbl, ver, sp);
-                } catch (Throwable ignored) {}
-            }, "raido-dep").start();
+            if (tbl == null || tbl.isEmpty() || ver == null || ver.isEmpty()) return;
+            JSONObject nu = new JSONObject(tbl);
+            if (!valid(nu)) return;
+            applyNew(app, nu, tbl, ver, app.getSharedPreferences(PREFS, Context.MODE_PRIVATE));
         } catch (Throwable ignored) {}
+    }
+
+    /** سازگار با فراخوانی قبلی: همگام‌سازی از طریق RemoteConfig */
+    public void syncIfDue(final Context ctx) {
+        RemoteConfig.syncIfDue(ctx);
     }
 
     private synchronized void applyNew(Context app, JSONObject nu, String raw, String ver,
