@@ -36,18 +36,32 @@ public final class RaidoDataStore {
         return new File(c.getApplicationContext().getFilesDir(), FILE_NAME);
     }
 
+    // کش حافظهٔ فایل تاریخچه: فقط وقتی فایل روی دیسک تغییر کرده دوباره پارس می‌شود (پارس چند مگابایت JSON هر بار ثانیه‌ها طول می‌کشید)
+    private JSONObject cacheRoot;
+    private long cacheLen = -1L;
+    private long cacheMod = -1L;
+
     private synchronized JSONObject readRoot(Context c) {
         try {
             File f = file(c);
             if (!f.exists() || f.length() == 0) {
+                cacheRoot = null;
                 JSONObject o = new JSONObject();
                 o.put("analyses", new JSONArray());
                 o.put("meta", new JSONObject());
                 return o;
             }
+            if (cacheRoot != null && f.length() == cacheLen && f.lastModified() == cacheMod) {
+                return cacheRoot;
+            }
             byte[] buf = new byte[(int) f.length()];
             FileInputStream in = new FileInputStream(f);
-            int n = in.read(buf);
+            int n = 0;
+            while (n < buf.length) {
+                int r = in.read(buf, n, buf.length - n);
+                if (r < 0) break;
+                n += r;
+            }
             in.close();
             if (n <= 0) {
                 JSONObject o = new JSONObject();
@@ -55,8 +69,13 @@ public final class RaidoDataStore {
                 o.put("meta", new JSONObject());
                 return o;
             }
-            return new JSONObject(new String(buf, 0, n, StandardCharsets.UTF_8));
+            JSONObject parsed = new JSONObject(new String(buf, 0, n, StandardCharsets.UTF_8));
+            cacheRoot = parsed;
+            cacheLen = f.length();
+            cacheMod = f.lastModified();
+            return parsed;
         } catch (Exception e) {
+            cacheRoot = null;
             try {
                 JSONObject o = new JSONObject();
                 o.put("analyses", new JSONArray());
@@ -75,7 +94,12 @@ public final class RaidoDataStore {
             out.write(root.toString().getBytes(StandardCharsets.UTF_8));
             out.flush();
             out.close();
-        } catch (Exception ignored) {}
+            cacheRoot = root;
+            cacheLen = f.length();
+            cacheMod = f.lastModified();
+        } catch (Exception ignored) {
+            cacheRoot = null;
+        }
     }
 
     private JSONObject buildRow(JSONObject recordFromStore) throws Exception {
@@ -120,6 +144,9 @@ public final class RaidoDataStore {
             }
             if (recordFromStore.has("tripKm") && !recordFromStore.isNull("tripKm")) {
                 row.put("tripKm", recordFromStore.optDouble("tripKm"));
+            }
+            if (recordFromStore.optJSONObject("timing") != null) {
+                row.put("timing", recordFromStore.optJSONObject("timing"));
             }
         return row;
     }
@@ -199,7 +226,7 @@ public final class RaidoDataStore {
     }
 
     /** اگر ردیف قبلی با همین ts هست جایگزین می‌شود (کیلومتر واقعی رسید)، وگرنه اضافه. شمارنده دوباره زیاد نمی‌شود. */
-    public void upsertAnalysis(Context c, JSONObject rec, long oldTs) {
+    public synchronized void upsertAnalysis(Context c, JSONObject rec, long oldTs) {
         if (c == null || rec == null) return;
         try {
             JSONObject root = readRoot(c);
@@ -222,7 +249,7 @@ public final class RaidoDataStore {
         appendAnalysis(c, rec);
     }
 
-    public void appendAnalysis(Context c, JSONObject recordFromStore) {
+    public synchronized void appendAnalysis(Context c, JSONObject recordFromStore) {
         if (c == null || recordFromStore == null) return;
         UsageCounter.onAnalysis(c);
         try {
@@ -247,7 +274,7 @@ public final class RaidoDataStore {
         } catch (Exception ignored) {}
     }
 
-    public void markAccepted(Context c, long ts) {
+    public synchronized void markAccepted(Context c, long ts) {
         if (c == null || ts <= 0) return;
         UsageCounter.onAccepted(c, ts);
         try {
@@ -314,7 +341,7 @@ public final class RaidoDataStore {
         return false;
     }
 
-    public void incrementWrongReports(Context c) {
+    public synchronized void incrementWrongReports(Context c) {
         if (c == null) return;
         try {
             JSONObject root = readRoot(c);

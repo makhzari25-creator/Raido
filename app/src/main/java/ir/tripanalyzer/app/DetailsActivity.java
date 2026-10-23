@@ -259,6 +259,16 @@ public final class DetailsActivity extends BaseActivity {
         boolean accepted = last.optBoolean("accepted", false);
         trip.addView(row("وضعیت ثبت", accepted ? "✓ به‌عنوان رفته ثبت شده" : "ثبت نشده"));
         try {
+            org.json.JSONObject tm = last.optJSONObject("timing");
+            if (tm != null) {
+                trip.addView(row("زمان تحلیل (ثانیه)", String.format(Locale.US,
+                        "کل %.1f · مکث %.1f · خواندن %.1f · محاسبه %.1f · ژئو %.1f",
+                        tm.optLong("total") / 1000.0, tm.optLong("wait") / 1000.0,
+                        tm.optLong("read") / 1000.0, tm.optLong("calc") / 1000.0,
+                        tm.optLong("geo") / 1000.0)));
+            }
+        } catch (Throwable ignored) {}
+        try {
             if (last.has("payForm") && last.optString("payForm").length() > 0) {
                 trip.addView(row("پرداخت", last.optString("payLabel", last.optString("payForm"))));
             }

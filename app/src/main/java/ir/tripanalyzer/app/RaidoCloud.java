@@ -73,10 +73,10 @@ final class RaidoCloud {
 
     private static volatile long lastWarm;
 
-    /** گرم کردن اتصال TLS به سرور (OPTIONS سبک بدون دیتابیس)؛ حداکثر هر ۹۰ ثانیه، فقط برای پرمیوم. */
+    /** گرم کردن اتصال TLS به سرور (OPTIONS سبک بدون دیتابیس)؛ حداکثر هر ۴۵ ثانیه، فقط برای پرمیوم. */
     static void warmAsync(final android.content.Context ctx) {
         final long now = System.currentTimeMillis();
-        if (now - lastWarm < 90_000) return;
+        if (now - lastWarm < 45_000) return;
         lastWarm = now;
         new Thread(new Runnable() {
             @Override public void run() {

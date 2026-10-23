@@ -88,6 +88,7 @@ public final class Pipeline {
         Store store = Store.INSTANCE;
         Intrinsics.checkNotNull(applicationContext);
         if (ScreenHints.isActiveTripScreen(rawText)) return;
+        final long tStart = System.currentTimeMillis();
         if (store.isAnalysisEnabled(applicationContext) && LicenseStore.INSTANCE.canUseAnalysis(applicationContext) && ParseLayer.INSTANCE.looksLikeTripRequest(rawText)) {
             SnappLegParser.TripShape shape = ParseLayer.INSTANCE.analyzeShape(rawText);
             SnappLegParser.Legs legs = shape.legs;
@@ -143,6 +144,15 @@ public final class Pipeline {
                 addrKey = RecentRequests.norm(ad[0]) + "|" + RecentRequests.norm(ad[1])
                         + "|" + (ad.length > 2 ? RecentRequests.norm(ad[2]) : "");
                 if ("||".equals(addrKey)) addrKey = "";
+            } catch (Throwable ignored) {}
+            // پیش‌دریافت ژئوکد (پرمیوم): همین حالا و هم‌زمان با بقیهٔ کارها شروع می‌شود تا وقتی به مرحلهٔ ژئو رسیدیم آماده باشد
+            try {
+                if (parse.getFare() != null && LicenseStore.INSTANCE.isPremium(applicationContext)) {
+                    String[] pad = ParseLayer.INSTANCE.extractAddresses(rawText);
+                    boolean wantOrigin = !ActivityZoneStore.INSTANCE.isZoneActiveForAnalysis(applicationContext);
+                    NeshanClient.INSTANCE.prefetch(applicationContext,
+                            wantOrigin ? pad[0] : null, pad[1]);
+                }
             } catch (Throwable ignored) {}
             final String reqKey = signatureOf + "#" + addrKey;
             final String baseKey = String.valueOf(parse.getFare()) + "#" + addrKey;
@@ -243,6 +253,7 @@ public final class Pipeline {
                 dest2Addr = null;
             }
 
+            final long tCalcEnd = System.currentTimeMillis();
             {
                 GeoLayer.Enrichment en = GeoLayer.INSTANCE.enrich(
                         applicationContext, analyze, parse.getFare(),
@@ -263,6 +274,7 @@ public final class Pipeline {
                 activityZoneDistanceKm = en.activityZoneDistanceKm;
                 activityZoneMode = en.activityZoneMode;
             }
+            final long tGeoEnd = System.currentTimeMillis();
 
             if (analyze.getVerdict() != Verdict.GRAY || ParseLayer.INSTANCE.isOfferScreen(rawText)
                     || Intrinsics.areEqual(source, "manual")) {
@@ -295,6 +307,21 @@ public final class Pipeline {
                             if (dest2Addr != null) rec.put("dest2", dest2Addr);
                         } catch (Throwable ignored) {}
                     } catch (Throwable ignored) {}
+                    try {
+                        // زمان‌سنجی مراحل (میلی‌ثانیه) برای نمایش در جزئیات
+                        long evt = SnappScreenWatcherService.evtAt;
+                        long cap = SnappScreenWatcherService.capAt;
+                        org.json.JSONObject tm = new org.json.JSONObject();
+                        if (evt > 0 && cap >= evt && tStart - evt < 30000L) {
+                            tm.put("wait", cap - evt);          // مکث/صف قبل از خواندن صفحه
+                            tm.put("read", Math.max(0L, tStart - cap)); // خواندن صفحه تا شروع تحلیل
+                        }
+                        tm.put("calc", Math.max(0L, tCalcEnd - tStart));   // بررسی تکراری + محاسبه
+                        tm.put("geo", Math.max(0L, tGeoEnd - tCalcEnd));   // ژئو
+                        long nowT = System.currentTimeMillis();
+                        tm.put("total", (evt > 0 && tStart - evt < 30000L) ? nowT - evt : nowT - tStart);
+                        rec.put("timing", tm);
+                    } catch (Throwable ignored) {}
                     Store.INSTANCE.saveLast(applicationContext, rec);
                     TripLifecycle.INSTANCE.bindActiveIfNormal(
                             applicationContext, rec, duringTrip, isFresh, analyze.getVerdict());
@@ -303,6 +330,10 @@ public final class Pipeline {
                                 : (analyze.getDistanceSource() == DataSource.MIXED ? "ترکیبی" : "تخمینی");
                         Store.INSTANCE.setLastDistSource(applicationContext, distLabel);
                     } catch (Throwable ignored) {}
+                    // کارت همین حالا نشان داده می‌شود؛ ذخیره‌های دیسکی (تاریخچه، RecentRequests، همگام‌سازی) بعد از آن می‌روند
+                    if (isFresh) {
+                        Notifier.INSTANCE.show(applicationContext, analyze, currentTimeMillis, false, parse.getFare());
+                    }
                     try {
                         if (isFresh && analyze.getVerdict() != Verdict.GRAY) {
                             if (isUpgrade) RaidoDataStore.INSTANCE.upsertAnalysis(applicationContext, rec, upgradeOldTs);
@@ -325,9 +356,6 @@ public final class Pipeline {
                     } catch (Throwable ignored) {
                     }
 
-                    if (isFresh) {
-                        Notifier.INSTANCE.show(applicationContext, analyze, currentTimeMillis, false, parse.getFare());
-                    }
                 }
             }
             }

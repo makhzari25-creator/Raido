@@ -12,12 +12,12 @@ import java.util.Map;
 
 /**
  * کش ماندگار ژئوکد روی گوشی (فقط نتیجهٔ موفق). کلید = آدرس نرمال‌شده.
- * سقف ۸۰۰ آدرس (LRU) و عمر ۳۰ روز؛ ذخیره در SharedPreferences روی ترد جدا.
+ * سقف ۳۰۰۰ آدرس (LRU) و عمر ۹۰ روز؛ ذخیره در SharedPreferences روی ترد جدا.
  */
 final class GeoCache {
     static final GeoCache INSTANCE = new GeoCache();
-    private static final int MAX = 800;
-    private static final long TTL_MS = 30L * 24 * 3600 * 1000;
+    private static final int MAX = 3000;
+    private static final long TTL_MS = 90L * 24 * 3600 * 1000;
     private static final String PREFS = "geo_cache_v1";
 
     private final Map<String, double[]> map = new LinkedHashMap<String, double[]>(64, 0.75f, true) {

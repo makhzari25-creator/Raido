@@ -89,9 +89,48 @@ public final class NeshanClient {
      * GET https://api.neshan.org/v4/geocoding?address=...
      * Header: Api-Key: ...
      */
+    private static final java.util.concurrent.ConcurrentHashMap<String, java.util.concurrent.CompletableFuture<GeocodeResult>> INFLIGHT =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static boolean usable(String a) {
+        return a != null && a.trim().length() >= 4;
+    }
+
+    /**
+     * پیش‌دریافت: ژئوکد مبدأ و مقصد در «یک» درخواست و در پس‌زمینه شروع می‌شود (قبل از بقیهٔ مراحل تحلیل).
+     * geocodeDetailed بعداً از همین نتیجه استفاده می‌کند و درخواست تازه نمی‌زند.
+     */
+    public void prefetch(final Context ctx, String origin, String dest) {
+        if (ctx == null || !LicenseStore.INSTANCE.isPremium(ctx)) return;
+        final java.util.List<String> todo = new java.util.ArrayList<>();
+        final java.util.List<java.util.concurrent.CompletableFuture<GeocodeResult>> futs = new java.util.ArrayList<>();
+        for (String a : new String[]{dest, origin}) {
+            if (!usable(a)) continue;
+            String k = GeoCache.norm(a);
+            if (GeoCache.INSTANCE.get(ctx, a) != null) continue;
+            java.util.concurrent.CompletableFuture<GeocodeResult> f = new java.util.concurrent.CompletableFuture<>();
+            if (INFLIGHT.putIfAbsent(k, f) != null) continue;
+            todo.add(a.trim());
+            futs.add(f);
+        }
+        if (todo.isEmpty()) return;
+        POOL.submit(new Runnable() {
+            @Override public void run() {
+                java.util.List<GeocodeResult> res = null;
+                try { res = networkBatch(ctx, todo); } catch (Throwable ignored) {}
+                for (int i = 0; i < todo.size(); i++) {
+                    GeocodeResult r = (res != null && i < res.size() && res.get(i) != null) ? res.get(i)
+                            : new GeocodeResult(true, false, 0, null, null, null, "شبکه/اتصال به سرور برقرار نشد", "raido-cloud/geocode");
+                    futs.get(i).complete(r);
+                    INFLIGHT.remove(GeoCache.norm(todo.get(i)), futs.get(i));
+                }
+            }
+        });
+    }
+
     public GeocodeResult geocodeDetailed(Context ctx, String address) {
         final String endpoint = "raido-cloud/geocode";
-        if (address == null || address.trim().length() < 4) {
+        if (!usable(address)) {
             return GeocodeResult.skip("آدرس کوتاه/خالی");
         }
         if (ctx != null && !LicenseStore.INSTANCE.isPremium(ctx)) {
@@ -104,54 +143,98 @@ public final class NeshanClient {
         if (cached != null) {
             return new GeocodeResult(true, true, 200, "OK", cached[0], cached[1], null, "raido-cloud/geocode (کش گوشی)");
         }
+        // ۲) پیش‌دریافتِ در حال انجام برای همین آدرس
+        java.util.concurrent.CompletableFuture<GeocodeResult> pf = INFLIGHT.get(GeoCache.norm(address));
+        if (pf != null) {
+            try {
+                return pf.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (Throwable t) {
+                return new GeocodeResult(true, false, 0, null, null, null, "ژئوکد به‌موقع تمام نشد", endpoint);
+            }
+        }
+        java.util.List<String> one = new java.util.ArrayList<>();
+        one.add(address.trim());
+        java.util.List<GeocodeResult> r = networkBatch(ctx, one);
+        return (r != null && !r.isEmpty() && r.get(0) != null) ? r.get(0)
+                : new GeocodeResult(true, false, 0, null, null, null, "شبکه/اتصال به سرور برقرار نشد", endpoint);
+    }
+
+    /** یک درخواست شبکه برای یک یا چند آدرس؛ اگر سرور قدیمی بود تک‌تک. */
+    private java.util.List<GeocodeResult> networkBatch(Context ctx, java.util.List<String> addrs) {
+        final String endpoint = "raido-cloud/geocode";
+        java.util.List<GeocodeResult> out = new java.util.ArrayList<>();
         String token = LicenseStore.INSTANCE.getToken(ctx);
-        if (token == null) return GeocodeResult.skip("ورود لازم است");
+        if (token == null) {
+            for (int i = 0; i < addrs.size(); i++) out.add(GeocodeResult.skip("ورود لازم است"));
+            return out;
+        }
         try {
-            JSONObject req = new JSONObject().put("address", address.trim());
+            org.json.JSONArray arr = new org.json.JSONArray();
+            for (String a : addrs) arr.put(a);
             JSONObject r;
             try {
                 // timeout کوتاه: اگر سرور دیر جواب داد، تحلیل عادی بدون لایهٔ نشان نمایش داده می‌شود
-                r = RaidoCloud.post("geocode", req, token, 2500, 3500);
+                r = RaidoCloud.post("geocode", new JSONObject().put("addresses", arr), token, 2500, 3500);
             } catch (Throwable net) {
-                return new GeocodeResult(true, false, 0, null, null, null,
-                        "شبکه/اتصال به سرور برقرار نشد", endpoint);
+                for (int i = 0; i < addrs.size(); i++)
+                    out.add(new GeocodeResult(true, false, 0, null, null, null, "شبکه/اتصال به سرور برقرار نشد", endpoint));
+                return out;
             }
             int code = r.optInt("_http");
             if (code == 401) {
                 LicenseStore.INSTANCE.refreshStatus(ctx); // خروج اجباری + ثبت دلیل
-                return new GeocodeResult(true, false, code, null, null, null, "نشست نامعتبر", endpoint);
+                for (int i = 0; i < addrs.size(); i++)
+                    out.add(new GeocodeResult(true, false, code, null, null, null, "نشست نامعتبر", endpoint));
+                return out;
             }
-            if (code != 200) {
+            org.json.JSONArray results = r.optJSONArray("results");
+            if (code != 200 || results == null) {
                 String why = r.optString("error", "");
-                return new GeocodeResult(true, false, code, null, null, null,
-                        "HTTP " + code + (why.isEmpty() ? "" : " · " + why), endpoint);
+                for (int i = 0; i < addrs.size(); i++)
+                    out.add(new GeocodeResult(true, false, code, null, null, null,
+                            "HTTP " + code + (why.isEmpty() ? "" : " · " + why), endpoint));
+                return out;
             }
-            String st = r.optString("status", "");
-            if (!"OK".equalsIgnoreCase(st)) {
-                return new GeocodeResult(true, false, code, st, null, null,
-                        "status نشان: " + (st.isEmpty() ? "خالی" : st), endpoint);
+            for (int i = 0; i < addrs.size(); i++) {
+                JSONObject it = i < results.length() ? results.optJSONObject(i) : null;
+                out.add(parseItem(ctx, addrs.get(i), it, endpoint));
             }
-            JSONObject loc = r.optJSONObject("location");
-            if (loc == null) {
-                return new GeocodeResult(true, false, code, st, null, null,
-                        "بدون location در پاسخ نشان", endpoint);
-            }
-            // Neshan: x = lng, y = lat
-            double lng = loc.getDouble("x");
-            double lat = loc.getDouble("y");
-            if (lat < 25 || lat > 40 || lng < 44 || lng > 64) {
-                return new GeocodeResult(true, false, code, st, lat, lng,
-                        "مختصات خارج از محدوده ایران", endpoint);
-            }
-            GeoCache.INSTANCE.put(ctx, address, lat, lng);
-            return new GeocodeResult(true, true, code, st, lat, lng, null,
-                    r.optBoolean("cached") ? endpoint + " (کش سرور)" : endpoint);
         } catch (Throwable t) {
             String msg = t.getMessage();
             if (msg == null || msg.isEmpty()) msg = t.getClass().getSimpleName();
             if (msg.length() > 80) msg = msg.substring(0, 80);
-            return new GeocodeResult(true, false, 0, null, null, null,
-                    "خطا: " + msg, endpoint);
+            out.clear();
+            for (int i = 0; i < addrs.size(); i++)
+                out.add(new GeocodeResult(true, false, 0, null, null, null, "خطا: " + msg, endpoint));
         }
+        return out;
+    }
+
+    private GeocodeResult parseItem(Context ctx, String address, JSONObject it, String endpoint) {
+        if (it == null) return new GeocodeResult(true, false, 200, null, null, null, "پاسخ ناقص", endpoint);
+        String err = it.optString("error", "");
+        if (!err.isEmpty()) {
+            return new GeocodeResult(true, false, it.optInt("http", 0), null, null, null, "سرور: " + err, endpoint);
+        }
+        String st = it.optString("status", "");
+        if (!"OK".equalsIgnoreCase(st)) {
+            return new GeocodeResult(true, false, 200, st, null, null,
+                    "status نشان: " + (st.isEmpty() ? "خالی" : st), endpoint);
+        }
+        JSONObject loc = it.optJSONObject("location");
+        if (loc == null) {
+            return new GeocodeResult(true, false, 200, st, null, null, "بدون location در پاسخ نشان", endpoint);
+        }
+        double lng = loc.optDouble("x", Double.NaN);
+        double lat = loc.optDouble("y", Double.NaN);
+        if (Double.isNaN(lat) || Double.isNaN(lng)) {
+            return new GeocodeResult(true, false, 200, st, null, null, "مختصات نامعتبر", endpoint);
+        }
+        if (lat < 25 || lat > 40 || lng < 44 || lng > 64) {
+            return new GeocodeResult(true, false, 200, st, lat, lng, "مختصات خارج از محدوده ایران", endpoint);
+        }
+        GeoCache.INSTANCE.put(ctx, address, lat, lng);
+        return new GeocodeResult(true, true, 200, st, lat, lng, null,
+                it.optBoolean("cached") ? endpoint + " (کش سرور)" : endpoint);
     }
 }

@@ -30,7 +30,13 @@ public final class SnappScreenWatcherService extends AccessibilityService {
 
     /* renamed from: Companion, reason: from kotlin metadata */
     public static final Companion INSTANCE = new Companion(null);
-    private static final long DEBOUNCE_MS = 450;
+    // مکث بعد از آخرین رویداد، با سقف انتظار: حتی اگر انیمیشن/شمارنده مدام رویداد بفرستد، خواندن صفحه حداکثر MAX_WAIT_MS بعد از اولین رویداد انجام می‌شود
+    private static final long DEBOUNCE_MS = 300;
+    private static final long MAX_WAIT_MS = 700;
+    static volatile long evtAt;   // لحظهٔ اولین رویداد دستهٔ فعلی (برای زمان‌سنجی)
+    static volatile long capAt;   // لحظهٔ شروع خواندن صفحه
+    private boolean capPending;
+    private long firstEvtUptime;
     private static final int MAX_CHARS = 16000;
     private static final int MAX_DEPTH = 22;
     private static final int MAX_NODES = 800;
@@ -261,8 +267,15 @@ public final class SnappScreenWatcherService extends AccessibilityService {
             RaidoCloud.warmAsync(getApplicationContext()); // اتصال گرم برای ژئوکد (حداکثر هر ۹۰ ثانیه)
             // فقط تغییر پنجره/محتوا — نه typeViewTextChanged (۱۶) که روی نقشه مدام شلیک می‌شود
             if (eventType == 32 || eventType == 2048 || eventType == 4194304) {
+                long up = android.os.SystemClock.uptimeMillis();
+                if (!capPending) {
+                    capPending = true;
+                    firstEvtUptime = up;
+                    evtAt = System.currentTimeMillis();
+                }
                 this.handler.removeCallbacks(this.captureTask);
-                this.handler.postDelayed(this.captureTask, DEBOUNCE_MS);
+                long delay = Math.max(0L, Math.min(DEBOUNCE_MS, firstEvtUptime + MAX_WAIT_MS - up));
+                this.handler.postDelayed(this.captureTask, delay);
             }
         }
     }
@@ -278,6 +291,7 @@ public final class SnappScreenWatcherService extends AccessibilityService {
     private final void captureAndProcess() {
         List<AccessibilityWindowInfo> list;
         AccessibilityNodeInfo accessibilityNodeInfo;
+        capPending = false;
         if (this.inCapture) {
             return;
         }
@@ -289,6 +303,7 @@ public final class SnappScreenWatcherService extends AccessibilityService {
         } catch (Throwable ignored) {}
         boolean z = true;
         this.inCapture = true;
+        capAt = System.currentTimeMillis();
         try {
             StringBuilder sb = new StringBuilder();
             Ref.IntRef intRef = new Ref.IntRef();
@@ -317,12 +332,15 @@ public final class SnappScreenWatcherService extends AccessibilityService {
                     }
                 }
             }
-            try {
-                AccessibilityNodeInfo rootInActiveWindow = getRootInActiveWindow();
-                if (rootInActiveWindow != null) {
-                    captureAndProcess$collect(intRef, sb, rootInActiveWindow, 0);
+            // پنجرهٔ فعال فقط وقتی لازم است که لیست پنجره‌ها چیزی نداده باشد (قبلاً هر بار درخت دوبار پیمایش می‌شد)
+            if (intRef.element == 0) {
+                try {
+                    AccessibilityNodeInfo rootInActiveWindow = getRootInActiveWindow();
+                    if (rootInActiveWindow != null) {
+                        captureAndProcess$collect(intRef, sb, rootInActiveWindow, 0);
+                    }
+                } catch (Throwable unused5) {
                 }
-            } catch (Throwable unused5) {
             }
             Companion companion = INSTANCE;
             lastNodeCount = intRef.element;
