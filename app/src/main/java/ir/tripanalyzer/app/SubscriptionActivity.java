@@ -41,7 +41,7 @@ public final class SubscriptionActivity extends BaseActivity {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
         shell.setBackgroundColor(PageKit.BG);
-        shell.addView(PageKit.header(this, "اشتراک RAIDO", "حسابداری هوشمند رانندگان"), new LinearLayout.LayoutParams(-1, -2));
+        shell.addView(PageKit.header(this, "اشتراک RAIDO", "حسابداری هوشمند رانندگان"), new LinearLayout.LayoutParams(-1, PageKit.dp(this, 150)));
         ScrollView scroll = new ScrollView(this);
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);

@@ -26,7 +26,7 @@ public final class HelpActivity extends BaseActivity {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
         shell.setBackgroundColor(PageKit.BG);
-        shell.addView(PageKit.header(this, "راهنمای رایدو", "از نصب تا تحلیل هر درخواست"), new LinearLayout.LayoutParams(-1, -2));
+        shell.addView(PageKit.header(this, "راهنمای رایدو", "از نصب تا تحلیل هر درخواست"), new LinearLayout.LayoutParams(-1, PageKit.dp(this, 150)));
 
         ScrollView scroll = new ScrollView(this);
         list = new LinearLayout(this);
