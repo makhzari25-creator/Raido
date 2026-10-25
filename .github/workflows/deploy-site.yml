@@ -1,0 +1,74 @@
+name: Deploy RAIDO website
+
+# سایت از پوشهٔ website/ ساخته می‌شود و آخرین APK امضاشده با کلید انتشار داخل خود سایت قرار می‌گیرد.
+on:
+  workflow_run:
+    workflows: ["Build RAIDO APK"]
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths: ['website/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: f8a367e1-abf8-48f1-a0cd-6f4f2662d119
+      HAS_RELEASE_KEY: ${{ secrets.RAIDO_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          set -e
+          mkdir -p _site
+          cp website/* _site/
+          if [ "$HAS_RELEASE_KEY" != "true" ]; then
+            echo "::notice::No release keystore secret: site deployed without APK."
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            RUN_ID=${{ github.event.workflow_run.id }}
+          else
+            RUN_ID=$(gh run list --workflow "Build RAIDO APK" --branch main --status success -L 1 --json databaseId -q '.[0].databaseId')
+          fi
+          [ -n "$RUN_ID" ] || { echo "::warning::No successful APK build found"; exit 0; }
+          mkdir -p dist
+          gh run download "$RUN_ID" -n RAIDO-apk -D dist
+          APK=$(ls dist/RAIDO-v*.apk | head -1)
+          BT=$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/* | sort -V | tail -1)
+          CERT=$("$BT/apksigner" verify --print-certs "$APK" | grep -m1 "SHA-256 digest" | awk '{print tolower($NF)}')
+          CI=$(keytool -list -keystore app/raido-ci.keystore -storepass raidoci123 -alias raidoci 2>/dev/null | grep -i -m1 SHA-256 | awk '{print tolower($NF)}' | tr -d ':')
+          echo "APK cert sha256: $CERT"
+          if [ "$CERT" = "$CI" ]; then
+            echo "::warning::Latest APK is signed with the CI test key; not publishing it on the site. Re-run Build RAIDO APK after the release keystore secret is set."
+            exit 0
+          fi
+          VER=$(basename "$APK" .apk | sed 's/^RAIDO-v//')
+          cp "$APK" _site/RAIDO.apk
+          SIZE=$(stat -c %s _site/RAIDO.apk)
+          SHA=$(sha256sum _site/RAIDO.apk | awk '{print $1}')
+          printf '{"version":"%s","size":%s,"sha256":"%s","cert":"%s","date":"%s"}\n' "$VER" "$SIZE" "$SHA" "$CERT" "$(date -u +%FT%TZ)" > _site/version.json
+          cat _site/version.json
+
+      - name: Deploy to Netlify
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::Secret NETLIFY_AUTH_TOKEN is not set (Netlify > User settings > Applications > Personal access tokens)."
+            exit 1
+          fi
+          npx -y netlify-cli@latest deploy --dir=_site --prod --site "$NETLIFY_SITE_ID" --message "RAIDO site ${GITHUB_SHA::7}"
