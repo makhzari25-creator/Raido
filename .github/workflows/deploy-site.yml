@@ -36,7 +36,7 @@ jobs:
         run: |
           set -e
           mkdir -p _site
-          cp website/* _site/
+          cp -r website/. _site/
           if [ "$HAS_RELEASE_KEY" != "true" ]; then
             echo "::notice::No release keystore secret: site deployed without APK."
             exit 0
